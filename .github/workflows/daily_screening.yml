@@ -1,0 +1,44 @@
+name: Daily Stock Screening
+
+on:
+  schedule:
+    # 毎日15:05 JST = 06:05 UTC
+    - cron: '5 6 * * 1-5'  # 月〜金のみ（平日）
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install requests pandas google-auth google-auth-oauthlib google-api-python-client
+
+      - name: Run screening (update mode)
+        env:
+          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
+        run: python run_screen_full.py --update
+
+      - name: Upload results to Google Drive
+        env:
+          GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+        run: python upload_to_gdrive.py
+
+      - name: Upload log as artifact (for debugging)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screening-log-${{ github.run_id }}
+          path: data/screen_full.log
+          retention-days: 7
