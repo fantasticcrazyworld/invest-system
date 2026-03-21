@@ -1,4 +1,4 @@
-import os, sys, time, json, logging
+﻿import os, sys, time, json, logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -17,7 +17,7 @@ BATCH_SIZE = 50
 REQUEST_SLEEP_SEC = 0.1
 MAX_RETRIES = 3
 RETRY_SLEEP_SEC = 10.0
-PARALLEL_WORKERS = 3
+PARALLEL_WORKERS = 8
 NIKKEI225_CODE = "1321"
 ETF_CODE_PREFIXES = ("13","14","15","16","17","18","19")
 
