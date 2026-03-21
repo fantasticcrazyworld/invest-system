@@ -17,7 +17,7 @@ BATCH_SIZE = 50
 REQUEST_SLEEP_SEC = 0.1
 MAX_RETRIES = 3
 RETRY_SLEEP_SEC = 10.0
-PARALLEL_WORKERS = 8
+PARALLEL_WORKERS = 15
 NIKKEI225_CODE = "1321"
 ETF_CODE_PREFIXES = ("13","14","15","16","17","18","19")
 
@@ -276,4 +276,5 @@ if __name__ == "__main__":
     else:
         log.info("RESUME MODE: continuing from last run")
         run(resume=True)
+
 
