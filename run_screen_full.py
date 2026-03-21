@@ -1,13 +1,13 @@
 """
 run_screen_full.py  v2.0
-Claude不要で単独動作するスクリーニングスクリプト
-毎日15時にWindowsタスクスケジューラから自動実行
+Claude荳崎ｦ√〒蜊倡峡蜍穂ｽ懊☆繧九せ繧ｯ繝ｪ繝ｼ繝九Φ繧ｰ繧ｹ繧ｯ繝ｪ繝励ヨ
+豈取律15譎ゅ↓Windows繧ｿ繧ｹ繧ｯ繧ｹ繧ｱ繧ｸ繝･繝ｼ繝ｩ縺九ｉ閾ｪ蜍募ｮ溯｡・
 
-使い方:
-  python run_screen_full.py              # 前回続きから（デフォルト）
-  python run_screen_full.py --fresh      # 最初から全銘柄
-  python run_screen_full.py --test       # 先頭20銘柄でテスト
-  python run_screen_full.py --no-etf    # ETF除外（デフォルトと同じ）
+菴ｿ縺・婿:
+  python run_screen_full.py              # 蜑榊屓邯壹″縺九ｉ・医ョ繝輔か繝ｫ繝茨ｼ・
+  python run_screen_full.py --fresh      # 譛蛻昴°繧牙・驫俶氛
+  python run_screen_full.py --test       # 蜈磯ｭ20驫俶氛縺ｧ繝・せ繝・
+  python run_screen_full.py --no-etf    # ETF髯､螟厄ｼ医ョ繝輔か繝ｫ繝医→蜷後§・・
 """
 
 import os
@@ -328,7 +328,7 @@ def run(resume: bool = True, max_stocks: int = 0, exclude_etf: bool = True):
     passed = sum(1 for k, v in results.items()
                  if k != "__meta__" and v.get("passed"))
 
-    # 未処理コードのみ抽出
+    # 譛ｪ蜃ｦ逅・さ繝ｼ繝峨・縺ｿ謚ｽ蜃ｺ
     pending = [c for c in codes[start_idx:]
                if not (c in results and not results[c].get("error"))]
     log.info(f"Pending: {len(pending)} stocks  Workers: {PARALLEL_WORKERS}")
@@ -353,7 +353,7 @@ def run(resume: bool = True, max_stocks: int = 0, exclude_etf: bool = True):
             elif res.get("passed"):
                 passed += 1
 
-            # BATCH_SIZE件ごとに保存＆進捗ログ
+            # BATCH_SIZE莉ｶ縺斐→縺ｫ菫晏ｭ假ｼ・ｲ謐励Ο繧ｰ
             if batch_count % BATCH_SIZE == 0:
                 done = start_idx + batch_count
                 _save_progress(done, total, started_at)
@@ -380,20 +380,20 @@ def run(resume: bool = True, max_stocks: int = 0, exclude_etf: bool = True):
     _save_results(results)
 
     log.info("=" * 60)
-    log.info(f"完了! {total}銘柄  PASS:{pass_count}  ERR:{errors}  "
-             f"所要:{elapsed_min}分")
-    log.info(f"結果: {RESULTS_FILE}")
+    log.info(f"螳御ｺ・ {total}驫俶氛  PASS:{pass_count}  ERR:{errors}  "
+             f"謇隕・{elapsed_min}蛻・)
+    log.info(f"邨先棡: {RESULTS_FILE}")
 
 
 def update():
     """
-    差分更新モード（毎日15時の自動実行用）
-    - 当日分のデータのみ取得（days=5: 週明けも対応）
-    - 既存CSVに追記してMinerviniを再計算
-    - APIコール数が約80分の1になる
+    蟾ｮ蛻・峩譁ｰ繝｢繝ｼ繝会ｼ域ｯ取律15譎ゅ・閾ｪ蜍募ｮ溯｡檎畑・・
+    - 蠖捺律蛻・・繝・・繧ｿ縺ｮ縺ｿ蜿門ｾ暦ｼ・ays=5: 騾ｱ譏弱￠繧ょｯｾ蠢懶ｼ・
+    - 譌｢蟄呂SV縺ｫ霑ｽ險倥＠縺ｦMinervini繧貞・險育ｮ・
+    - API繧ｳ繝ｼ繝ｫ謨ｰ縺檎ｴ・0蛻・・1縺ｫ縺ｪ繧・
     """
     log.info("=" * 60)
-    log.info("UPDATE MODE: 差分更新（当日データのみ取得）")
+    log.info("UPDATE MODE: 蟾ｮ蛻・峩譁ｰ・亥ｽ捺律繝・・繧ｿ縺ｮ縺ｿ蜿門ｾ暦ｼ・)
 
     items = fetch_master()
     items = [i for i in items if not _is_etf(str(i.get("Code",""))[:4], i)]
@@ -401,10 +401,10 @@ def update():
     total = len(codes)
     log.info(f"Target: {total} stocks")
 
-    # Nikkei225ベンチマーク（直近5日分）
+    # Nikkei225繝吶Φ繝√・繝ｼ繧ｯ・育峩霑・譌･蛻・ｼ・
     bench_closes = []
     try:
-        # 既存CSVに追記してから全期間のcloseを取得
+        # 譌｢蟄呂SV縺ｫ霑ｽ險倥＠縺ｦ縺九ｉ蜈ｨ譛滄俣縺ｮclose繧貞叙蠕・
         bench_csv = CSV_DIR / f"{NIKKEI225_CODE}_daily.csv"
         new_bars  = _fetch_daily(NIKKEI225_CODE, days=5)
         if new_bars and bench_csv.exists():
@@ -420,15 +420,15 @@ def update():
     except Exception as e:
         log.warning(f"Nikkei225 update failed: {e}")
 
-    # 既存のスクリーニング結果をロード
+    # 譌｢蟄倥・繧ｹ繧ｯ繝ｪ繝ｼ繝九Φ繧ｰ邨先棡繧偵Ο繝ｼ繝・
     results    = _load_results()
     started_at = datetime.now().isoformat()
     errors = passed = 0
 
     def _update_one(code_4):
-        """当日データを取得し既存CSVに追記してスクリーニング"""
+        """蠖捺律繝・・繧ｿ繧貞叙蠕励＠譌｢蟄呂SV縺ｫ霑ｽ險倥＠縺ｦ繧ｹ繧ｯ繝ｪ繝ｼ繝九Φ繧ｰ"""
         try:
-            new_bars = _fetch_daily(code_4, days=5)  # 直近5日（週明け対応）
+            new_bars = _fetch_daily(code_4, days=5)  # 逶ｴ霑・譌･・磯ｱ譏弱￠蟇ｾ蠢懶ｼ・
             if not new_bars:
                 return None
 
@@ -441,7 +441,7 @@ def update():
                 merged.reset_index().to_csv(csv_path, index=False)
                 df = merged
             else:
-                # CSVがなければフル取得
+                # CSV縺後↑縺代ｌ縺ｰ繝輔Ν蜿門ｾ・
                 full_bars = _fetch_daily(code_4, days=400)
                 df = _daily_to_df(full_bars)
                 df.reset_index().to_csv(csv_path, index=False)
@@ -515,9 +515,9 @@ def update():
     _save_results(results)
 
     log.info("=" * 60)
-    log.info(f"更新完了! {total}銘柄  PASS:{pass_count}  ERR:{errors}  "
-             f"所要:{elapsed_min}分")
-    log.info(f"結果: {RESULTS_FILE}")
+    log.info(f"譖ｴ譁ｰ螳御ｺ・ {total}驫俶氛  PASS:{pass_count}  ERR:{errors}  "
+             f"謇隕・{elapsed_min}蛻・)
+    log.info(f"邨先棡: {RESULTS_FILE}")
 
 # ---------------------------------------------------------------------------
 # Entry point
@@ -526,14 +526,14 @@ def update():
 if __name__ == "__main__":
     args = sys.argv[1:]
     if "--test" in args:
-        log.info("TEST MODE: 先頭20銘柄")
+        log.info("TEST MODE: 蜈磯ｭ20驫俶氛")
         run(resume=False, max_stocks=20)
     elif "--fresh" in args:
-        log.info("FRESH MODE: 全銘柄・最初から")
+        log.info("FRESH MODE: 蜈ｨ驫俶氛繝ｻ譛蛻昴°繧・)
         run(resume=False)
     elif "--update" in args:
-        log.info("UPDATE MODE: 差分更新")
+        log.info("UPDATE MODE: 蟾ｮ蛻・峩譁ｰ")
         update()
     else:
-        # デフォルト: 前回続きから
+        # 繝・ヵ繧ｩ繝ｫ繝・ 蜑榊屓邯壹″縺九ｉ
         run(resume=True)
