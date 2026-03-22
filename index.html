@@ -39,7 +39,7 @@
 .page-btn:hover{border-color:#f0b429;color:#f0b429}
 .page-btn.active{background:#f0b429;color:#0d1117;border-color:#f0b429;font-weight:600}
 .page-btn:disabled{opacity:.3;cursor:not-allowed}
-.page-info{font-size:12px;color:#8b949e}</style></head><body><div class="header"><div class="logo">MINERVINI TERMINAL <span>yohei</span></div><div class="updated" id="updated">読み込み中...</div></div><div class="nav"><button class="nav-btn active" onclick="showPage('screening',this)">スクリーニング</button><button class="nav-btn" onclick="showPage('chart',this)">チャート</button><button class="nav-btn" onclick="showPage('fins',this)">業績</button><button class="nav-btn" onclick="showPage('portfolio',this)">ポートフォリオ</button></div><div class="page active" id="page-screening"><div class="metrics"><div class="metric"><div class="metric-label">対象銘柄</div><div class="metric-value muted" id="m-total">-</div></div><div class="metric"><div class="metric-label">PASS 6/7+</div><div class="metric-value green" id="m-pass">-</div></div><div class="metric"><div class="metric-label">満点 7/7</div><div class="metric-value gold" id="m-perfect">-</div></div><div class="metric"><div class="metric-label">高値更新圏</div><div class="metric-value gold" id="m-nearhigh">-</div></div></div><div class="filter-panel"><div class="search-box"><span style="color:#8b949e;font-size:14px">&#128269;</span><input type="text" id="search-input" placeholder="銘柄コード・銘柄名で検索..." oninput="applyFilters()"></div><div class="filter-row"><span class="filter-label">スコア</span><div class="slider-wrap"><input type="range" id="score-slider" min="1" max="7" value="6" step="1" oninput="updateLabel('score-slider','score-val',v=>v+'/7以上')"><span class="slider-val" id="score-val">6/7以上</span></div></div><div class="filter-row"><span class="filter-label">高値比</span><div class="slider-wrap"><input type="range" id="highpct-slider" min="70" max="100" value="90" step="1" oninput="updateLabel('highpct-slider','highpct-val',v=>v+'%以上')"><span class="slider-val" id="highpct-val">90%以上</span></div></div><div class="filter-row"><span class="filter-label">RS26w</span><div class="toggle-wrap"><div class="toggle" id="rs-toggle" onclick="toggleRS()"></div><span class="toggle-label" id="rs-label">全て表示</span></div></div><div class="filter-row"><span class="filter-label">並び順</span><div class="slider-wrap"><select id="sort-select" onchange="applyFilters()" style="background:#161b22;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:4px 8px;font-size:12px;flex:1"><option value="score">スコア順</option><option value="rs26w">RS26w強い順</option><option value="high_pct">高値比順</option><option value="price">株価順</option></select></div></div><div class="custom-filter">
+.page-info{font-size:12px;color:#8b949e}</style><script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script></head><body><div class="header"><div class="logo">MINERVINI TERMINAL <span>yohei</span></div><div class="updated" id="updated">読み込み中...</div></div><div class="nav"><button class="nav-btn active" onclick="showPage('screening',this)">スクリーニング</button><button class="nav-btn" onclick="showPage('chart',this)">チャート</button><button class="nav-btn" onclick="showPage('fins',this)">業績</button><button class="nav-btn" onclick="showPage('portfolio',this)">ポートフォリオ</button></div><div class="page active" id="page-screening"><div class="metrics"><div class="metric"><div class="metric-label">対象銘柄</div><div class="metric-value muted" id="m-total">-</div></div><div class="metric"><div class="metric-label">PASS 6/7+</div><div class="metric-value green" id="m-pass">-</div></div><div class="metric"><div class="metric-label">満点 7/7</div><div class="metric-value gold" id="m-perfect">-</div></div><div class="metric"><div class="metric-label">高値更新圏</div><div class="metric-value gold" id="m-nearhigh">-</div></div></div><div class="filter-panel"><div class="search-box"><span style="color:#8b949e;font-size:14px">&#128269;</span><input type="text" id="search-input" placeholder="銘柄コード・銘柄名で検索..." oninput="applyFilters()"></div><div class="filter-row"><span class="filter-label">スコア</span><div class="slider-wrap"><input type="range" id="score-slider" min="1" max="7" value="6" step="1" oninput="updateLabel('score-slider','score-val',v=>v+'/7以上')"><span class="slider-val" id="score-val">6/7以上</span></div></div><div class="filter-row"><span class="filter-label">高値比</span><div class="slider-wrap"><input type="range" id="highpct-slider" min="70" max="100" value="90" step="1" oninput="updateLabel('highpct-slider','highpct-val',v=>v+'%以上')"><span class="slider-val" id="highpct-val">90%以上</span></div></div><div class="filter-row"><span class="filter-label">RS26w</span><div class="toggle-wrap"><div class="toggle" id="rs-toggle" onclick="toggleRS()"></div><span class="toggle-label" id="rs-label">全て表示</span></div></div><div class="filter-row"><span class="filter-label">並び順</span><div class="slider-wrap"><select id="sort-select" onchange="applyFilters()" style="background:#161b22;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:4px 8px;font-size:12px;flex:1"><option value="score">スコア順</option><option value="rs26w">RS26w強い順</option><option value="high_pct">高値比順</option><option value="price">株価順</option></select></div></div><div class="custom-filter">
 <div class="custom-filter-row">
 <input class="custom-filter-input" id="custom-input" placeholder="例: rs26w > 0.5  /  high_pct > 0.97 && score == 7" oninput="applyFilters()">
 <button class="custom-filter-btn" onclick="savePreset()">保存</button>
@@ -47,7 +47,30 @@
 <div class="custom-filter-error" id="custom-error"></div>
 <div class="preset-row" id="preset-row"></div>
 </div>
-<div class="filter-actions"><button class="reset-btn" onclick="resetFilters()">リセット</button><button class="reset-btn" id="vol-btn" onclick="toggleVol()" style="margin-left:4px">出来高急増</button><button class="reset-btn" id="ytd-btn" onclick="toggleYTD()" style="margin-left:4px">年初来高値</button></div></div><div class="section-header"><div class="section-title">PASS銘柄一覧</div><div class="section-count" id="display-count">-</div></div><div id="screening-content"><div class="loading"><div class="spinner"></div><div class="loading-text">データを読み込み中...</div></div></div></div><div class="page" id="page-chart"><div class="coming-soon"><div class="coming-soon-title">週足チャート</div><div class="coming-soon-text">SMA 50/150/200日線チャートを実装予定</div></div></div><div class="page" id="page-fins"><div class="coming-soon"><div class="coming-soon-title">業績分析</div><div class="coming-soon-text">売上・EPS推移グラフを実装予定</div></div></div><div class="page" id="page-portfolio"><div class="coming-soon"><div class="coming-soon-title">ポートフォリオ</div><div class="coming-soon-text">保有株・含み損益管理を実装予定</div></div></div><button class="chat-btn" onclick="toggleChat()" title="AIチャット">&#129302;</button>
+<div class="filter-actions"><button class="reset-btn" onclick="resetFilters()">リセット</button><button class="reset-btn" id="vol-btn" onclick="toggleVol()" style="margin-left:4px">出来高急増</button><button class="reset-btn" id="ytd-btn" onclick="toggleYTD()" style="margin-left:4px">年初来高値</button></div></div><div class="section-header"><div class="section-title">PASS銘柄一覧</div><div class="section-count" id="display-count">-</div></div><div id="screening-content"><div class="loading"><div class="spinner"></div><div class="loading-text">データを読み込み中...</div></div></div></div><div class="page" id="page-chart">
+  <div style="padding:12px 14px;background:#0d1117;border-bottom:1px solid #21262d">
+    <div style="display:flex;gap:8px;align-items:center">
+      <input id="chart-code-input" type="text" placeholder="銘柄コード（例: 7203）" style="flex:1;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#e6edf3;font-size:14px" onkeydown="if(event.key==='Enter')loadChart()">
+      <button onclick="loadChart()" style="padding:8px 16px;background:#f0b429;border:none;border-radius:6px;color:#0d1117;font-weight:600;cursor:pointer;font-size:14px">表示</button>
+    </div>
+    <div id="chart-stock-name" style="font-size:12px;color:#8b949e;margin-top:6px"></div>
+    <div style="display:flex;gap:6px;margin-top:8px" id="chart-tf-btns">
+      <button onclick="switchTF('daily')" id="tf-daily" style="padding:4px 12px;font-size:12px;border:1px solid #30363d;border-radius:6px;background:#f0b429;color:#0d1117;font-weight:600;cursor:pointer">日足</button>
+      <button onclick="switchTF('weekly')" id="tf-weekly" style="padding:4px 12px;font-size:12px;border:1px solid #30363d;border-radius:6px;background:none;color:#8b949e;cursor:pointer">週足</button>
+      <button onclick="switchTF('monthly')" id="tf-monthly" style="padding:4px 12px;font-size:12px;border:1px solid #30363d;border-radius:6px;background:none;color:#8b949e;cursor:pointer">月足</button>
+    </div>
+  </div>
+  <div id="chart-loading" style="display:none;padding:40px;text-align:center;color:#8b949e">読み込み中...</div>
+  <div id="chart-error" style="display:none;padding:20px 16px;color:#f85149;font-size:13px"></div>
+  <div style="padding:8px 14px;display:flex;gap:12px;flex-wrap:wrap" id="chart-legend"></div>
+  <div style="position:relative;padding:0 8px 8px">
+    <canvas id="price-chart" style="max-height:320px"></canvas>
+  </div>
+  <div style="padding:0 8px 16px">
+    <div style="font-size:11px;color:#8b949e;padding:2px 6px">出来高</div>
+    <canvas id="volume-chart" style="max-height:80px"></canvas>
+  </div>
+</div><div class="page" id="page-fins"><div class="coming-soon"><div class="coming-soon-title">業績分析</div><div class="coming-soon-text">売上・EPS推移グラフを実装予定</div></div></div><div class="page" id="page-portfolio"><div class="coming-soon"><div class="coming-soon-title">ポートフォリオ</div><div class="coming-soon-text">保有株・含み損益管理を実装予定</div></div></div><button class="chat-btn" onclick="toggleChat()" title="AIチャット">&#129302;</button>
 <div class="chat-panel" id="chat-panel">
   <div class="chat-header">
     <span class="chat-header-title">&#129302; AI&#12450;&#12471;&#12473;&#12479;&#12531;&#12488;</span>
@@ -233,6 +256,115 @@ async function sendChat(){
     addChatMsg("ai","エラー: "+e.message);
   }finally{
     if(sendBtn) sendBtn.disabled=false;
+  }
+}
+let priceChart=null,volumeChart=null,rawBars=[],curTF='daily';
+function switchTF(tf){
+  curTF=tf;
+  ['daily','weekly','monthly'].forEach(t=>{
+    const b=document.getElementById('tf-'+t);
+    if(b){b.style.background=t===tf?'#f0b429':'none';b.style.color=t===tf?'#0d1117':'#8b949e';b.style.fontWeight=t===tf?'600':'400';}
+  });
+  if(rawBars.length) renderChart(rawBars,tf);
+}
+function toWeekly(bars){
+  const weeks=[];let wk=null;
+  bars.forEach(b=>{
+    const dow=new Date(b.Date).getDay();
+    if(!wk||dow<=1&&wk.bars.length>0){if(wk)weeks.push(wk);wk={date:b.Date,bars:[b]};}
+    else wk.bars.push(b);
+  });
+  if(wk&&wk.bars.length)weeks.push(wk);
+  return weeks.map(w=>({
+    Date:w.date,
+    O:w.bars[0].AdjO||w.bars[0].O,H:Math.max(...w.bars.map(b=>parseFloat(b.AdjH||b.H))),
+    L:Math.min(...w.bars.map(b=>parseFloat(b.AdjL||b.L))),C:w.bars[w.bars.length-1].AdjC||w.bars[w.bars.length-1].C,
+    Vo:w.bars.reduce((s,b)=>s+parseInt(b.AdjVo||b.Vo||0),0)
+  }));
+}
+function toMonthly(bars){
+  const months={};
+  bars.forEach(b=>{
+    const key=b.Date.slice(0,7);
+    if(!months[key])months[key]={Date:b.Date,O:b.AdjO||b.O,H:-Infinity,L:Infinity,C:b.AdjC||b.C,Vo:0};
+    const m=months[key];
+    m.H=Math.max(m.H,parseFloat(b.AdjH||b.H));
+    m.L=Math.min(m.L,parseFloat(b.AdjL||b.L));
+    m.C=b.AdjC||b.C;
+    m.Vo+=parseInt(b.AdjVo||b.Vo||0);
+  });
+  return Object.values(months).sort((a,b)=>a.Date.localeCompare(b.Date));
+}
+function renderChart(bars,tf){
+  let data=bars;
+  if(tf==='weekly')data=toWeekly(bars);
+  else if(tf==='monthly')data=toMonthly(bars);
+  const labels=data.map(b=>b.Date.slice(0,10));
+  const closes=data.map(b=>parseFloat(b.C||b.AdjC));
+  const opens=data.map(b=>parseFloat(b.O||b.AdjO));
+  const highs=data.map(b=>parseFloat(b.H||b.AdjH));
+  const lows=data.map(b=>parseFloat(b.L||b.AdjL));
+  const vols=data.map(b=>parseInt(b.Vo||0));
+  const sma=(arr,n)=>arr.map((_,i)=>i<n-1?null:arr.slice(i-n+1,i+1).reduce((a,b)=>a+b,0)/n);
+  // 時間足に応じてSMA期間を調整
+  const m=tf==='daily'?1:tf==='weekly'?5:22;
+  const s50=sma(closes,Math.round(50/m));
+  const s150=sma(closes,Math.round(150/m));
+  const s200=sma(closes,Math.round(200/m));
+  if(priceChart){priceChart.destroy();priceChart=null;}
+  if(volumeChart){volumeChart.destroy();volumeChart=null;}
+  document.getElementById('chart-legend').innerHTML=
+    '<span style="font-size:11px;color:#f0b429">■ SMA'+(Math.round(50/m))+'</span>'+
+    '<span style="font-size:11px;color:#58a6ff;margin-left:10px">■ SMA'+(Math.round(150/m))+'</span>'+
+    '<span style="font-size:11px;color:#3fb950;margin-left:10px">■ SMA'+(Math.round(200/m))+'</span>';
+  const priceCtx=document.getElementById('price-chart').getContext('2d');
+  priceChart=new Chart(priceCtx,{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'HL',data:highs.map((h,i)=>({x:labels[i],y:[lows[i],h]})),
+       backgroundColor:closes.map((c,i)=>c>=opens[i]?'rgba(63,185,80,0.7)':'rgba(248,81,73,0.7)'),
+       borderColor:closes.map((c,i)=>c>=opens[i]?'#3fb950':'#f85149'),borderWidth:1},
+      {label:'SMA50',data:s50,type:'line',borderColor:'#f0b429',borderWidth:1.5,pointRadius:0,tension:0.1,spanGaps:true},
+      {label:'SMA150',data:s150,type:'line',borderColor:'#58a6ff',borderWidth:1.5,pointRadius:0,tension:0.1,spanGaps:true},
+      {label:'SMA200',data:s200,type:'line',borderColor:'#3fb950',borderWidth:1.5,pointRadius:0,tension:0.1,spanGaps:true},
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:(ctx)=>ctx.dataset.label+': '+ctx.parsed.y?.toLocaleString()}}},
+      scales:{x:{ticks:{maxTicksLimit:8,color:'#8b949e',font:{size:10}},grid:{color:'#21262d'}},
+              y:{ticks:{color:'#8b949e',font:{size:10},callback:v=>v.toLocaleString()},grid:{color:'#21262d'}}}}
+  });
+  const volCtx=document.getElementById('volume-chart').getContext('2d');
+  volumeChart=new Chart(volCtx,{
+    type:'bar',
+    data:{labels,datasets:[{data:vols,backgroundColor:'rgba(88,166,255,0.35)',borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},
+      scales:{x:{display:false},y:{ticks:{color:'#8b949e',font:{size:9},maxTicksLimit:3,callback:v=>v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v},grid:{color:'#21262d'}}}}
+  });
+}
+async function loadChart(){
+  const code=(document.getElementById('chart-code-input')?.value||'').trim();
+  if(!code)return;
+  let apiKey=gk('gk_jquants');
+  if(!apiKey){apiKey=prompt('J-Quants APIキーを入力してください:');if(!apiKey)return;sk('gk_jquants',apiKey);}
+  document.getElementById('chart-loading').style.display='block';
+  document.getElementById('chart-error').style.display='none';
+  document.getElementById('chart-legend').innerHTML='';
+  try{
+    const code5=code+'0';
+    const dateFrom=new Date(Date.now()-400*864e5).toISOString().slice(0,10).replace(/-/g,'');
+    const dateTo=new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const res=await fetch(https://api.jquants.com/v2/equities/bars/daily?code=&from=&to=,{headers:{'x-api-key':apiKey}});
+    if(!res.ok)throw new Error('APIエラー: '+res.status);
+    const json=await res.json();
+    rawBars=(json.data||[]).sort((a,b)=>a.Date.localeCompare(b.Date));
+    if(!rawBars.length)throw new Error('データがありません');
+    const found=allData.find(x=>x.code===code);
+    document.getElementById('chart-stock-name').textContent=found?(code+' '+found.name):'コード: '+code;
+    document.getElementById('chart-loading').style.display='none';
+    renderChart(rawBars,curTF);
+  }catch(e){
+    document.getElementById('chart-loading').style.display='none';
+    document.getElementById('chart-error').style.display='block';
+    document.getElementById('chart-error').textContent='エラー: '+e.message;
   }
 }
 function closeDetail(){document.getElementById("detail-panel").classList.remove("open");document.getElementById("overlay").classList.remove("show");}function showPage(n,btn){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));document.getElementById("page-"+n).classList.add("active");btn.classList.add("active");}loadData();renderPresets();</script></body></html>
