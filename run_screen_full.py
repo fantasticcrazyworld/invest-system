@@ -123,6 +123,11 @@ def _minervini(df: pd.DataFrame) -> dict:
     _today = _date.today()
     _ytd_days = min((_today - _date(_today.year, 1, 1)).days + 1, len(c))
     ytd_high = c[-_ytd_days:].max()
+    volume     = int(df["volume"].values[-1]) if "volume" in df.columns else 0
+    vol20      = float(df["volume"].values[-min(20,len(df)):].mean()) if "volume" in df.columns else 0
+    prev_close = float(c[-2]) if len(c) >= 2 else float(c[-1])
+    change_pct = round((float(c[-1]) - prev_close) / prev_close * 100, 2) if prev_close > 0 else 0.0
+    vol_ratio  = round(volume / vol20, 2) if vol20 > 0 else 1.0
     low52     = c[-min(252, len(c)):].min()
     cond = [
         bool(price > sma150 and price > sma200),
