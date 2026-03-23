@@ -26,7 +26,7 @@ import pandas as pd
 # Paths & constants
 # ---------------------------------------------------------------------------
 
-BASE_DIR   = Path(r"C:\Users\yohei\Documents\invest-system")
+BASE_DIR   = Path(__file__).parent
 CSV_DIR    = BASE_DIR / "csv_output"
 CONFIG     = Path.home() / ".jquants_config.json"
 
