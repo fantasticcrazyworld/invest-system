@@ -404,7 +404,7 @@ def update():
     log.info("=" * 60)
     log.info("UPDATE MODE: 差分更新（当日データのみ取得）")
 
-    items = fetch_master()
+    items = fetch_equity_master()
     items = [i for i in items if not _is_etf(str(i.get("Code",""))[:4], i)]
     codes = [str(i["Code"])[:4] for i in items]
     total = len(codes)
