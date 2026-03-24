@@ -14,6 +14,7 @@ import os
 import sys
 import time
 import json
+import math
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -244,9 +245,19 @@ def _load_results() -> dict:
         return json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
     return {}
 
+def _sanitize_nans(obj):
+    """Replace float NaN/Inf with None for valid JSON output."""
+    if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+        return None
+    if isinstance(obj, dict):
+        return {k: _sanitize_nans(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_nans(v) for v in obj]
+    return obj
+
 def _save_results(results: dict):
     RESULTS_FILE.write_text(
-        json.dumps(results, ensure_ascii=False, indent=2),
+        json.dumps(_sanitize_nans(results), ensure_ascii=False, indent=2),
         encoding="utf-8"
     )
 
