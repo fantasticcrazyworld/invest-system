@@ -20,12 +20,15 @@ import os
 import time
 import json
 import threading
+import webbrowser
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime, timedelta
 
 import requests
 import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("stock-analyzer")
@@ -45,7 +48,8 @@ MASTER_CACHE   = BASE_DIR / "data" / "equity_master_cache.json"
 PORTFOLIO_FILE = BASE_DIR / "data" / "portfolio.json"
 WATCHLIST_FILE = BASE_DIR / "data" / "watchlist.json"
 
-GITHUB_DIR = Path(r"C:\Users\yohei\Documents\invest-system-github")
+GITHUB_DIR  = Path(r"C:\Users\yohei\Documents\invest-system-github")
+CHART_DIR   = GITHUB_DIR / "charts"
 
 MASTER_CACHE_TTL_DAYS = 7
 BATCH_SIZE        = 50
@@ -1249,6 +1253,495 @@ def watchlist_screen() -> str:
             lines.append(f"  {code:<6}  ERROR: {e}")
 
     return "\n".join(lines)
+
+# ---------------------------------------------------------------------------
+# Chart generation (Plotly candlestick)
+# ---------------------------------------------------------------------------
+
+def _load_daily_csv(code: str) -> pd.DataFrame:
+    """Load daily CSV saved during screening. Returns DataFrame with OHLCV."""
+    csv_path = CSV_DIR / f"{code}_daily.csv"
+    if not csv_path.exists():
+        return pd.DataFrame()
+    df = pd.read_csv(csv_path, parse_dates=["date"])
+    df = df.sort_values("date").set_index("date")
+    return df
+
+
+@mcp.tool()
+def generate_chart(code: str, show_patterns: bool = True) -> str:
+    """ローソク足チャートを生成してブラウザで表示する。
+
+    SMA50/150/200、出来高、52週高値/安値ラインを含む本格的なチャート。
+    show_patterns=True の場合、検出されたパターンもチャート上に表示。
+
+    Args:
+        code: 4桁銘柄コード
+        show_patterns: パターン検出結果をチャートに重ねるか
+    """
+    # Load data (CSV first, fallback to API)
+    df = _load_daily_csv(code)
+    if df.empty:
+        try:
+            bars = _fetch_daily(code)
+            if not bars:
+                return f"ERROR: No price data for {code}"
+            df = _daily_to_df(bars)
+            # Save CSV for future use
+            df.reset_index().to_csv(CSV_DIR / f"{code}_daily.csv", index=False)
+        except Exception as e:
+            return f"ERROR fetching data: {e}"
+
+    if len(df) < 50:
+        return f"ERROR: Only {len(df)} days of data (need >= 50)"
+
+    c = df["close"].values.astype(float)
+    sma50  = pd.Series(c).rolling(50).mean()
+    sma150 = pd.Series(c).rolling(150).mean()
+    sma200 = pd.Series(c).rolling(200).mean()
+    high52 = pd.Series(c).rolling(min(252, len(c))).max()
+    low52  = pd.Series(c).rolling(min(252, len(c))).min()
+
+    dates = df.index
+
+    # Create subplots: candlestick + volume
+    fig = make_subplots(
+        rows=2, cols=1, shared_xaxes=True,
+        vertical_spacing=0.03,
+        row_heights=[0.75, 0.25],
+    )
+
+    # Candlestick
+    fig.add_trace(go.Candlestick(
+        x=dates, open=df["open"], high=df["high"],
+        low=df["low"], close=df["close"], name="OHLC",
+        increasing_line_color="#26a69a", decreasing_line_color="#ef5350",
+    ), row=1, col=1)
+
+    # SMAs
+    for sma, name, color in [
+        (sma50,  "SMA50",  "#2196F3"),
+        (sma150, "SMA150", "#FF9800"),
+        (sma200, "SMA200", "#9C27B0"),
+    ]:
+        fig.add_trace(go.Scatter(
+            x=dates, y=sma.values, name=name,
+            line=dict(color=color, width=1.2),
+        ), row=1, col=1)
+
+    # 52-week high/low
+    fig.add_trace(go.Scatter(
+        x=dates, y=high52.values, name="52W High",
+        line=dict(color="rgba(255,0,0,0.3)", width=1, dash="dot"),
+    ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=dates, y=low52.values, name="52W Low",
+        line=dict(color="rgba(0,128,0,0.3)", width=1, dash="dot"),
+    ), row=1, col=1)
+
+    # Volume bars
+    colors = ["#26a69a" if df["close"].iloc[i] >= df["open"].iloc[i]
+              else "#ef5350" for i in range(len(df))]
+    fig.add_trace(go.Bar(
+        x=dates, y=df["volume"], name="Volume",
+        marker_color=colors, opacity=0.7,
+    ), row=2, col=1)
+
+    # Pattern annotations
+    if show_patterns:
+        try:
+            patterns = _detect_all_patterns(df)
+            for p_name, p_data in patterns.items():
+                if p_data.get("detected"):
+                    details = p_data.get("details", {})
+                    pivot = details.get("pivot_price") or details.get("resistance")
+                    if pivot:
+                        fig.add_hline(
+                            y=pivot, line_dash="dash", line_color="gold",
+                            annotation_text=f"{p_name} pivot: {pivot:.0f}",
+                            row=1, col=1,
+                        )
+        except Exception:
+            pass
+
+    fig.update_layout(
+        title=f"{code} Daily Chart",
+        template="plotly_dark",
+        xaxis_rangeslider_visible=False,
+        height=700, width=1100,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        margin=dict(l=50, r=30, t=60, b=30),
+    )
+    fig.update_yaxes(title_text="Price", row=1, col=1)
+    fig.update_yaxes(title_text="Volume", row=2, col=1)
+
+    # Save & open
+    CHART_DIR.mkdir(parents=True, exist_ok=True)
+    html_path = CHART_DIR / f"{code}_chart.html"
+    fig.write_html(str(html_path), include_plotlyjs=True)
+    webbrowser.open(html_path.as_uri())
+
+    return f"OK: Chart saved to {html_path} and opened in browser"
+
+
+# ---------------------------------------------------------------------------
+# Chart pattern detection
+# ---------------------------------------------------------------------------
+
+def _find_swing_highs(closes: list, window: int = 10) -> list:
+    """Find swing high indices (local maxima)."""
+    highs = []
+    for i in range(window, len(closes) - window):
+        if closes[i] == max(closes[i - window: i + window + 1]):
+            highs.append(i)
+    return highs
+
+
+def _find_swing_lows(closes: list, window: int = 10) -> list:
+    """Find swing low indices (local minima)."""
+    lows = []
+    for i in range(window, len(closes) - window):
+        if closes[i] == min(closes[i - window: i + window + 1]):
+            lows.append(i)
+    return lows
+
+
+def _detect_cup_with_handle(df: pd.DataFrame) -> dict:
+    """
+    Cup with Handle detection.
+    - Cup: U-shaped base, 15-65 days, depth 12-35%
+    - Handle: shallow pullback from right rim, 5-25 days, < 1/2 cup depth
+    - Pivot: handle high + small buffer
+    """
+    closes = df["close"].values.astype(float).tolist()
+    n = len(closes)
+    if n < 60:
+        return {"detected": False, "confidence": 0, "details": {}}
+
+    # Search for cup patterns in recent data (last 120 days)
+    search_start = max(0, n - 120)
+    best = None
+
+    swing_highs = _find_swing_highs(closes[search_start:], window=8)
+    swing_highs = [i + search_start for i in swing_highs]
+
+    for left_rim_idx in swing_highs:
+        left_rim_price = closes[left_rim_idx]
+
+        # Look for cup bottom after left rim
+        cup_end_range = min(left_rim_idx + 66, n)
+        if cup_end_range - left_rim_idx < 15:
+            continue
+
+        segment = closes[left_rim_idx:cup_end_range]
+        bottom_offset = segment.index(min(segment))
+        bottom_idx = left_rim_idx + bottom_offset
+        bottom_price = closes[bottom_idx]
+
+        cup_depth_pct = (left_rim_price - bottom_price) / left_rim_price
+        if not (0.12 <= cup_depth_pct <= 0.35):
+            continue
+
+        # Check U-shape: bottom should be roughly in middle third
+        cup_len = cup_end_range - left_rim_idx
+        if not (cup_len * 0.25 < bottom_offset < cup_len * 0.75):
+            continue
+
+        # Right rim: find recovery back toward left rim price
+        right_rim_idx = None
+        for j in range(bottom_idx + 5, min(bottom_idx + 50, n)):
+            if closes[j] >= left_rim_price * 0.95:
+                right_rim_idx = j
+                break
+        if right_rim_idx is None:
+            continue
+
+        # Handle: shallow pullback after right rim
+        handle_end = min(right_rim_idx + 26, n)
+        if handle_end - right_rim_idx < 5:
+            continue
+
+        handle_seg = closes[right_rim_idx:handle_end]
+        handle_low = min(handle_seg)
+        handle_depth_pct = (closes[right_rim_idx] - handle_low) / closes[right_rim_idx]
+
+        # Handle should be shallow (less than half of cup depth)
+        if handle_depth_pct > cup_depth_pct * 0.5:
+            continue
+        if handle_depth_pct < 0.02:
+            continue
+
+        # Pivot price: right rim high + 0.5%
+        pivot_price = max(handle_seg) * 1.005
+
+        confidence = min(1.0, 0.5
+                         + (0.2 if 0.15 <= cup_depth_pct <= 0.30 else 0)
+                         + (0.15 if handle_depth_pct <= cup_depth_pct * 0.33 else 0)
+                         + (0.15 if cup_len >= 25 else 0))
+
+        if best is None or confidence > best["confidence"]:
+            best = {
+                "detected": True,
+                "confidence": round(confidence, 2),
+                "details": {
+                    "left_rim_idx": left_rim_idx,
+                    "left_rim_price": round(left_rim_price, 1),
+                    "bottom_idx": bottom_idx,
+                    "bottom_price": round(bottom_price, 1),
+                    "right_rim_idx": right_rim_idx,
+                    "cup_depth_pct": round(cup_depth_pct * 100, 1),
+                    "handle_depth_pct": round(handle_depth_pct * 100, 1),
+                    "cup_length_days": right_rim_idx - left_rim_idx,
+                    "pivot_price": round(pivot_price, 1),
+                },
+            }
+
+    return best or {"detected": False, "confidence": 0, "details": {}}
+
+
+def _detect_vcp(df: pd.DataFrame) -> dict:
+    """
+    VCP (Volatility Contraction Pattern) detection.
+    - At least 2 contractions where range shrinks 20%+ each time
+    - Volume declining during contractions
+    """
+    closes = df["close"].values.astype(float)
+    highs = df["high"].values.astype(float)
+    lows = df["low"].values.astype(float)
+    volumes = df["volume"].values.astype(float)
+    n = len(closes)
+    if n < 40:
+        return {"detected": False, "confidence": 0, "details": {}}
+
+    # Analyze last 80 days
+    lookback = min(80, n)
+    start = n - lookback
+
+    # Find contractions: split into segments by swing highs
+    seg_ranges = []
+    seg_volumes = []
+    seg_size = lookback // 4  # ~20 day segments
+
+    for i in range(4):
+        s = start + i * seg_size
+        e = min(s + seg_size, n)
+        if e <= s:
+            break
+        seg_high = max(highs[s:e])
+        seg_low = min(lows[s:e])
+        seg_range_pct = (seg_high - seg_low) / seg_high if seg_high > 0 else 0
+        seg_ranges.append(seg_range_pct)
+        seg_volumes.append(sum(volumes[s:e]) / (e - s))
+
+    if len(seg_ranges) < 3:
+        return {"detected": False, "confidence": 0, "details": {}}
+
+    # Count contractions (range shrinking)
+    contractions = 0
+    vol_declining = 0
+    for i in range(1, len(seg_ranges)):
+        if seg_ranges[i] < seg_ranges[i - 1] * 0.85:
+            contractions += 1
+        if seg_volumes[i] < seg_volumes[i - 1]:
+            vol_declining += 1
+
+    detected = contractions >= 2
+    if not detected:
+        return {"detected": False, "confidence": 0, "details": {}}
+
+    # Resistance line: recent swing high
+    recent_high = max(highs[n - 20:])
+    confidence = min(1.0, 0.4
+                     + contractions * 0.15
+                     + vol_declining * 0.1)
+
+    return {
+        "detected": True,
+        "confidence": round(confidence, 2),
+        "details": {
+            "contractions": contractions,
+            "vol_declining_segments": vol_declining,
+            "ranges_pct": [round(r * 100, 1) for r in seg_ranges],
+            "resistance": round(float(recent_high), 1),
+            "current_range_pct": round(seg_ranges[-1] * 100, 1),
+        },
+    }
+
+
+def _detect_flat_base(df: pd.DataFrame) -> dict:
+    """
+    Flat Base detection.
+    - Range within 15% over 20-65 days
+    - Volume below average
+    """
+    closes = df["close"].values.astype(float)
+    volumes = df["volume"].values.astype(float)
+    n = len(closes)
+    if n < 20:
+        return {"detected": False, "confidence": 0, "details": {}}
+
+    avg_vol = volumes[-min(100, n):].mean()
+    best = None
+
+    for length in range(20, min(66, n)):
+        seg = closes[-length:]
+        seg_high = max(seg)
+        seg_low = min(seg)
+        range_pct = (seg_high - seg_low) / seg_high if seg_high > 0 else 0
+
+        if range_pct > 0.15:
+            continue
+
+        seg_vol = volumes[-length:]
+        vol_ratio = seg_vol.mean() / avg_vol if avg_vol > 0 else 1.0
+
+        confidence = min(1.0, 0.5
+                         + (0.2 if range_pct <= 0.10 else 0)
+                         + (0.15 if vol_ratio < 0.8 else 0)
+                         + (0.15 if length >= 30 else 0))
+
+        if best is None or confidence > best["confidence"]:
+            best = {
+                "detected": True,
+                "confidence": round(confidence, 2),
+                "details": {
+                    "length_days": length,
+                    "range_pct": round(range_pct * 100, 1),
+                    "high": round(float(seg_high), 1),
+                    "low": round(float(seg_low), 1),
+                    "vol_ratio": round(vol_ratio, 2),
+                    "resistance": round(float(seg_high), 1),
+                },
+            }
+
+    return best or {"detected": False, "confidence": 0, "details": {}}
+
+
+def _detect_all_patterns(df: pd.DataFrame) -> dict:
+    """Run all pattern detectors on a DataFrame."""
+    return {
+        "cup_with_handle": _detect_cup_with_handle(df),
+        "vcp": _detect_vcp(df),
+        "flat_base": _detect_flat_base(df),
+    }
+
+
+@mcp.tool()
+def detect_patterns(code: str) -> str:
+    """銘柄のチャートパターンを検出する。
+
+    Cup with Handle / VCP / Flat Base を判定。
+    既存CSVデータを使用（APIコストなし）。CSVがなければAPIから取得。
+
+    Args:
+        code: 4桁銘柄コード
+    """
+    df = _load_daily_csv(code)
+    if df.empty:
+        try:
+            bars = _fetch_daily(code)
+            if not bars:
+                return json.dumps({"error": f"No data for {code}"}, ensure_ascii=False)
+            df = _daily_to_df(bars)
+            df.reset_index().to_csv(CSV_DIR / f"{code}_daily.csv", index=False)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, ensure_ascii=False)
+
+    results = _detect_all_patterns(df)
+    results["code"] = code
+    results["data_days"] = len(df)
+
+    # Summary line
+    detected = [k for k, v in results.items()
+                if isinstance(v, dict) and v.get("detected")]
+    results["summary"] = (
+        f"{code}: {', '.join(detected)} detected" if detected
+        else f"{code}: No pattern detected"
+    )
+
+    return json.dumps(results, ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def screen_patterns(min_score: int = 6) -> str:
+    """スクリーニングPASS銘柄のチャートパターンを一括検出する。
+
+    screen_full の結果からスコアが min_score 以上の銘柄を対象に
+    Cup with Handle / VCP / Flat Base を検出。APIコストなし（CSV使用）。
+
+    Args:
+        min_score: 最低スコア（デフォルト6）
+    """
+    if not RESULTS_FILE.exists():
+        return "ERROR: screen_full results not found. Run screen_full first."
+
+    data = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
+    candidates = []
+    for item in data:
+        if isinstance(item, dict) and item.get("code") and item.get("minervini"):
+            score_str = item["minervini"].get("score", "0/7")
+            score = int(score_str.split("/")[0])
+            if score >= min_score:
+                candidates.append(item["code"])
+
+    if not candidates:
+        return f"No stocks with score >= {min_score}"
+
+    all_results = []
+    for code in candidates:
+        df = _load_daily_csv(code)
+        if df.empty:
+            all_results.append({"code": code, "error": "No CSV data"})
+            continue
+        patterns = _detect_all_patterns(df)
+        detected = [k for k, v in patterns.items() if v.get("detected")]
+        all_results.append({
+            "code": code,
+            "name": next(
+                (i.get("name", "") for i in data
+                 if isinstance(i, dict) and i.get("code") == code), ""
+            ),
+            "score": next(
+                (i["minervini"]["score"] for i in data
+                 if isinstance(i, dict) and i.get("code") == code), ""
+            ),
+            "patterns": detected,
+            "details": {k: v for k, v in patterns.items() if v.get("detected")},
+        })
+
+    # Separate: with patterns vs without
+    with_patterns = [r for r in all_results if r.get("patterns")]
+    without = [r for r in all_results if not r.get("patterns") and "error" not in r]
+
+    # Save results
+    output = {
+        "__meta__": {
+            "generated_at": datetime.now().isoformat(),
+            "total_screened": len(candidates),
+            "patterns_found": len(with_patterns),
+            "min_score": min_score,
+        },
+        "with_patterns": with_patterns,
+        "no_patterns": [{"code": r["code"], "name": r.get("name", "")}
+                        for r in without],
+    }
+
+    result_path = BASE_DIR / "data" / "pattern_results.json"
+    result_path.write_text(
+        json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    # Summary
+    lines = [f"Pattern screening: {len(candidates)} stocks (score >= {min_score})"]
+    lines.append(f"Patterns found: {len(with_patterns)} stocks\n")
+    for r in with_patterns:
+        patterns_str = ", ".join(r["patterns"])
+        lines.append(f"  {r['code']}  {r.get('name',''):<10}  "
+                      f"[{r.get('score','')}]  {patterns_str}")
+
+    lines.append(f"\nResults saved to {result_path}")
+    return "\n".join(lines)
+
 
 # ---------------------------------------------------------------------------
 # General-purpose file & command tools
