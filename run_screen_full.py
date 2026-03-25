@@ -16,6 +16,7 @@ import time
 import json
 import math
 import logging
+import sqlite3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -46,6 +47,41 @@ PARALLEL_WORKERS  = 15
 
 NIKKEI225_CODE    = "1321"
 ETF_CODE_PREFIXES = ("13", "14", "15", "16", "17", "18", "19")
+
+# DB for long-term price storage (shared with stock_mcp_server.py)
+_INVEST_DIR = Path(r"C:\Users\yohei\Documents\invest-system")
+DB_PATH     = _INVEST_DIR / "data" / "stock_prices.db"
+
+
+def _save_daily_db(code: str, df: pd.DataFrame):
+    """Append daily OHLCV to SQLite (upsert, preserves history)."""
+    try:
+        (_INVEST_DIR / "data").mkdir(parents=True, exist_ok=True)
+        con = sqlite3.connect(DB_PATH)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS daily_prices (
+                code TEXT, date TEXT,
+                open REAL, high REAL, low REAL, close REAL, volume REAL,
+                PRIMARY KEY (code, date)
+            )
+        """)
+        df_save = df.reset_index()
+        df_save.columns = [c.lower() for c in df_save.columns]
+        df_save["code"] = code
+        df_save["date"] = df_save["date"].astype(str).str[:10]
+        for _, row in df_save.iterrows():
+            con.execute(
+                "INSERT OR REPLACE INTO daily_prices "
+                "(code, date, open, high, low, close, volume) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (row["code"], row["date"],
+                 row["open"], row["high"], row["low"], row["close"],
+                 row["volume"]),
+            )
+        con.commit()
+        con.close()
+    except Exception:
+        pass  # DB save is best-effort, don't break screening
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -276,6 +312,7 @@ def _screen_one(code_4: str, bench_closes: list = None) -> dict:
             if not bars or len(bars) < 10:
                 return {"code": code_4, "error": "insufficient data"}
             df     = _daily_to_df(bars)
+            _save_daily_db(code_4, df)  # Persist to DB
             result = _minervini(df)
             if "error" in result:
                 return {"code": code_4, "error": result["error"]}
@@ -472,6 +509,7 @@ def update():
                 df = _daily_to_df(full_bars)
                 df.reset_index().to_csv(csv_path, index=False)
 
+            _save_daily_db(code_4, df)  # Persist to DB
             result = _minervini(df)
             if "error" in result:
                 return {"code": code_4, "error": result["error"]}

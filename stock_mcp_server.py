@@ -125,6 +125,13 @@ def _init_db():
             PRIMARY KEY (code, date)
         )
     """)
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS daily_prices (
+            code TEXT, date TEXT,
+            open REAL, high REAL, low REAL, close REAL, volume REAL,
+            PRIMARY KEY (code, date)
+        )
+    """)
     con.commit()
     con.close()
 
@@ -144,6 +151,44 @@ def _load_weekly(code: str) -> pd.DataFrame:
         con, params=(code,)
     )
     con.close()
+    return df
+
+
+def _save_daily_db(code: str, df: pd.DataFrame):
+    """Save daily OHLCV to SQLite (upsert / append, no data loss)."""
+    _init_db()
+    con = sqlite3.connect(DB_PATH)
+    df_save = df.reset_index()
+    df_save.columns = [c.lower() for c in df_save.columns]
+    df_save["code"] = code
+    df_save["date"] = df_save["date"].astype(str).str[:10]
+    # INSERT OR REPLACE to merge new data with existing
+    for _, row in df_save.iterrows():
+        con.execute(
+            "INSERT OR REPLACE INTO daily_prices "
+            "(code, date, open, high, low, close, volume) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (row["code"], row["date"],
+             row["open"], row["high"], row["low"], row["close"], row["volume"]),
+        )
+    con.commit()
+    con.close()
+
+
+def _load_daily_db(code: str) -> pd.DataFrame:
+    """Load daily OHLCV from SQLite (all historical data)."""
+    _init_db()
+    con = sqlite3.connect(DB_PATH)
+    df = pd.read_sql(
+        "SELECT date, open, high, low, close, volume "
+        "FROM daily_prices WHERE code=? ORDER BY date",
+        con, params=(code,),
+    )
+    con.close()
+    if df.empty:
+        return df
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date")
     return df
 
 # ---------------------------------------------------------------------------
@@ -1259,12 +1304,31 @@ def watchlist_screen() -> str:
 # ---------------------------------------------------------------------------
 
 def _load_daily_csv(code: str) -> pd.DataFrame:
-    """Load daily CSV saved during screening. Returns DataFrame with OHLCV."""
+    """Load daily data: DB (historical) + CSV (latest), merged and deduplicated."""
+    frames = []
+
+    # 1. Load from DB (long history)
+    db_df = _load_daily_db(code)
+    if not db_df.empty:
+        frames.append(db_df)
+
+    # 2. Load from CSV (latest ~400 days)
     csv_path = CSV_DIR / f"{code}_daily.csv"
-    if not csv_path.exists():
+    if csv_path.exists():
+        try:
+            csv_df = pd.read_csv(csv_path, parse_dates=["date"])
+            csv_df = csv_df.sort_values("date").set_index("date")
+            frames.append(csv_df)
+        except Exception:
+            pass
+
+    if not frames:
         return pd.DataFrame()
-    df = pd.read_csv(csv_path, parse_dates=["date"])
-    df = df.sort_values("date").set_index("date")
+
+    # Merge: concat and deduplicate (keep latest data for overlapping dates)
+    df = pd.concat(frames)
+    df = df[~df.index.duplicated(keep="last")]
+    df = df.sort_index()
     return df
 
 
@@ -1792,7 +1856,7 @@ def _export_one(code: str, df: pd.DataFrame, max_days: int,
 
 
 def _ensure_csv(code: str) -> pd.DataFrame:
-    """Load CSV or fetch from API. Returns DataFrame (may be empty)."""
+    """Load data or fetch from API. Saves to both CSV and DB."""
     df = _load_daily_csv(code)
     if not df.empty:
         return df
@@ -1803,6 +1867,7 @@ def _ensure_csv(code: str) -> pd.DataFrame:
         df = _daily_to_df(bars)
         CSV_DIR.mkdir(parents=True, exist_ok=True)
         df.reset_index().to_csv(CSV_DIR / f"{code}_daily.csv", index=False)
+        _save_daily_db(code, df)  # Persist to DB for long-term storage
         time.sleep(REQUEST_SLEEP_SEC)
         return df
     except Exception:
