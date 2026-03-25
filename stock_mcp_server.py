@@ -351,6 +351,56 @@ def _fetch_fins(code_4: str) -> dict:
     except Exception:
         return {}
 
+def _fetch_fins_history(code_4: str) -> list:
+    """Fetch all financial records from J-Quants (FY + quarterly, ~10 years)."""
+    code_5 = code_4 + "0"
+    url = f"https://api.jquants.com/v2/fins/summary?code={code_5}"
+    try:
+        resp = requests.get(url, headers=_headers(), timeout=30)
+        resp.raise_for_status()
+        items = resp.json().get("data", [])
+    except Exception:
+        return []
+
+    def _num(v):
+        if v is None or v == "":
+            return None
+        try:
+            return float(v)
+        except (ValueError, TypeError):
+            return None
+
+    records = []
+    for item in items:
+        fy_end = item.get("CurFYEn", "")
+        per_type = item.get("CurPerType", "")
+        if not fy_end or not per_type:
+            continue
+        records.append({
+            "fy": fy_end[:7],            # e.g. "2026-03"
+            "period": per_type,           # FY, 1Q, 2Q, 3Q
+            "date": item.get("DiscDate", ""),
+            "sales": _num(item.get("Sales")),
+            "op": _num(item.get("OP")),
+            "np": _num(item.get("NP")),
+            "eps": _num(item.get("EPS")),
+            "bps": _num(item.get("BPS")),
+            "div": _num(item.get("DivAnn")),
+            "eq_ratio": _num(item.get("EqAR")),
+            # Forecasts (current FY)
+            "f_sales": _num(item.get("FSales")),
+            "f_op": _num(item.get("FOP")),
+            "f_np": _num(item.get("FNP")),
+            "f_eps": _num(item.get("FEPS")),
+            # Next FY forecasts
+            "nf_sales": _num(item.get("NxFSales")),
+            "nf_op": _num(item.get("NxFOP")),
+            "nf_np": _num(item.get("NxFNp")),
+            "nf_eps": _num(item.get("NxFEPS")),
+        })
+    return records
+
+
 # ---------------------------------------------------------------------------
 # ETF detection
 # ---------------------------------------------------------------------------
@@ -1985,6 +2035,77 @@ def export_site_data() -> str:
             copied.append(f"  {name}: (empty) {dst}")
 
     return "OK: Copied to GITHUB_DIR\n" + "\n".join(copied)
+
+
+@mcp.tool()
+def export_fins_data(extra_codes: str = "", ytd_near_pct: float = 0.98) -> str:
+    """年初来高値圏+監視+ポートフォリオ銘柄の業績データをJSONエクスポートする。
+
+    J-Quants APIから過去5年分の業績（通期+四半期+予想）を取得。
+    invest-dataにpushすればサイトの業績ページに反映。
+
+    Args:
+        extra_codes: カンマ区切りで追加銘柄コード
+        ytd_near_pct: 年初来高値の何%以内を対象にするか（デフォルト0.98）
+    """
+    if not RESULTS_FILE.exists():
+        return "ERROR: screen_full results not found."
+
+    data = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
+    items_dict = data if isinstance(data, dict) else {}
+
+    # Target stocks (same logic as export_chart_data)
+    watchlist = _load_watchlist()
+    portfolio = _load_portfolio()
+    wl_codes = set(watchlist.keys())
+    pf_codes = set(portfolio.keys())
+
+    ytd_codes = set()
+    for code, item in items_dict.items():
+        if code == "__meta__" or not isinstance(item, dict):
+            continue
+        if not item.get("passed"):
+            continue
+        ytd_high = item.get("ytd_high")
+        price = item.get("price", 0)
+        if ytd_high and price >= ytd_high * ytd_near_pct:
+            ytd_codes.add(code)
+
+    extra = set()
+    if extra_codes:
+        extra = {c.strip() for c in extra_codes.split(",") if c.strip()}
+
+    target_codes = wl_codes | pf_codes | ytd_codes | extra
+    if not target_codes:
+        return "No target stocks found"
+
+    fins_data = {}
+    fetched = 0
+    errors = 0
+
+    for code in sorted(target_codes):
+        try:
+            records = _fetch_fins_history(code)
+            if records:
+                fins_data[code] = records
+                fetched += 1
+            time.sleep(REQUEST_SLEEP_SEC)
+        except Exception:
+            errors += 1
+
+    # Save
+    fins_path = GITHUB_DIR / "fins_data.json"
+    fins_path.write_text(
+        json.dumps(fins_data, ensure_ascii=False), encoding="utf-8"
+    )
+
+    sz = fins_path.stat().st_size // 1024
+    return (
+        f"OK: Fetched financials for {fetched} stocks (errors: {errors})\n"
+        f"  Target: WL={len(wl_codes)}, PF={len(pf_codes)}, "
+        f"YTD={len(ytd_codes)}, Extra={len(extra)}\n"
+        f"  Saved: {fins_path} ({sz} KB)"
+    )
 
 
 # ---------------------------------------------------------------------------
