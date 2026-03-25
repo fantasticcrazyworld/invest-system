@@ -145,6 +145,9 @@ def _minervini(df: pd.DataFrame) -> dict:
         "price":  round(float(price), 1), "sma50":  round(float(sma50), 1),
         "sma150": round(float(sma150), 1), "sma200": round(float(sma200), 1),
         "high52": round(float(high52), 1), "low52":  round(float(low52), 1),
+        "ytd_high": round(float(ytd_high), 1),
+        "vol_ratio": vol_ratio,
+        "change_pct": change_pct,
     }
 
 # ---------------------------------------------------------------------------
@@ -293,6 +296,9 @@ def _screen_one(code_4: str, bench_closes: list = None) -> dict:
                 "sma150":     result["sma150"],
                 "sma200":     result["sma200"],
                 "conditions": result["conditions"],
+                "ytd_high":   result.get("ytd_high"),
+                "vol_ratio":  result.get("vol_ratio"),
+                "change_pct": result.get("change_pct"),
                 "rs6w":       rs.get("rs6w"),
                 "rs13w":      rs.get("rs13w"),
                 "rs26w":      rs.get("rs26w"),
@@ -483,6 +489,9 @@ def update():
                 "sma150":     result["sma150"],
                 "sma200":     result["sma200"],
                 "conditions": result["conditions"],
+                "ytd_high":   result.get("ytd_high"),
+                "vol_ratio":  result.get("vol_ratio"),
+                "change_pct": result.get("change_pct"),
                 "rs6w":       rs.get("rs6w"),
                 "rs13w":      rs.get("rs13w"),
                 "rs26w":      rs.get("rs26w"),

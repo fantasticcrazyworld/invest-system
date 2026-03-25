@@ -1480,9 +1480,17 @@ def _detect_cup_with_handle(df: pd.DataFrame) -> dict:
                          + (0.15 if cup_len >= 25 else 0))
 
         if best is None or confidence > best["confidence"]:
+            reason = (
+                f"左リム{left_rim_price:.0f}円→底{bottom_price:.0f}円"
+                f"(深さ{cup_depth_pct*100:.1f}%)→右リム回復。"
+                f"ハンドル調整{handle_depth_pct*100:.1f}%。"
+                f"ピボット{pivot_price:.0f}円。"
+                f"カップ期間{right_rim_idx - left_rim_idx}日"
+            )
             best = {
                 "detected": True,
                 "confidence": round(confidence, 2),
+                "reason": reason,
                 "details": {
                     "left_rim_idx": left_rim_idx,
                     "left_rim_price": round(left_rim_price, 1),
@@ -1555,9 +1563,16 @@ def _detect_vcp(df: pd.DataFrame) -> dict:
                      + contractions * 0.15
                      + vol_declining * 0.1)
 
+    ranges_str = "→".join(f"{r*100:.1f}%" for r in seg_ranges)
+    reason = (
+        f"収縮{contractions}回検出。レンジ: {ranges_str}。"
+        f"出来高減少{vol_declining}回。"
+        f"レジスタンス{recent_high:.0f}円"
+    )
     return {
         "detected": True,
         "confidence": round(confidence, 2),
+        "reason": reason,
         "details": {
             "contractions": contractions,
             "vol_declining_segments": vol_declining,
@@ -1601,9 +1616,16 @@ def _detect_flat_base(df: pd.DataFrame) -> dict:
                          + (0.15 if length >= 30 else 0))
 
         if best is None or confidence > best["confidence"]:
+            reason = (
+                f"直近{length}日間のレンジ{range_pct*100:.1f}%"
+                f"(高値{seg_high:.0f}円-安値{seg_low:.0f}円)。"
+                f"出来高比{vol_ratio:.2f}倍。"
+                f"レジスタンス{seg_high:.0f}円"
+            )
             best = {
                 "detected": True,
                 "confidence": round(confidence, 2),
+                "reason": reason,
                 "details": {
                     "length_days": length,
                     "range_pct": round(range_pct * 100, 1),
@@ -1744,95 +1766,114 @@ def screen_patterns(min_score: int = 6) -> str:
     return "\n".join(lines)
 
 
-@mcp.tool()
-def export_chart_data(min_score: int = 7, max_days: int = 200) -> str:
-    """サイト用に高スコア銘柄の日足OHLCVとパターン検出結果をJSONエクスポートする。
+def _export_one(code: str, df: pd.DataFrame, max_days: int,
+                chart_data: dict, pattern_data: dict):
+    """Export chart + pattern data for a single stock."""
+    df_clean = df.dropna(subset=["open", "high", "low", "close"]).tail(max_days)
+    records = []
+    for date, row in df_clean.iterrows():
+        records.append({
+            "time": date.strftime("%Y-%m-%d"),
+            "open": round(float(row["open"]), 1),
+            "high": round(float(row["high"]), 1),
+            "low": round(float(row["low"]), 1),
+            "close": round(float(row["close"]), 1),
+            "volume": int(row["volume"]) if pd.notna(row["volume"]) else 0,
+        })
+    chart_data[code] = records
 
-    screen_full結果のスコアmin_score以上の銘柄について:
-    - 日足OHLCV（CSVがあればCSVから、なければAPIから取得）
-    - パターン検出結果（Cup with Handle / VCP / Flat Base）
-    をJSON形式でGitHubリポジトリに保存。invest-dataにpushすればサイトに反映。
+    patterns = _detect_all_patterns(df)
+    detected = [k for k, v in patterns.items() if v.get("detected")]
+    if detected:
+        pattern_data[code] = {
+            "patterns": detected,
+            "details": {k: v for k, v in patterns.items() if v.get("detected")},
+        }
+
+
+def _ensure_csv(code: str) -> pd.DataFrame:
+    """Load CSV or fetch from API. Returns DataFrame (may be empty)."""
+    df = _load_daily_csv(code)
+    if not df.empty:
+        return df
+    try:
+        bars = _fetch_daily(code)
+        if not bars:
+            return pd.DataFrame()
+        df = _daily_to_df(bars)
+        CSV_DIR.mkdir(parents=True, exist_ok=True)
+        df.reset_index().to_csv(CSV_DIR / f"{code}_daily.csv", index=False)
+        time.sleep(REQUEST_SLEEP_SEC)
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+
+@mcp.tool()
+def export_chart_data(extra_codes: str = "", max_days: int = 200,
+                      ytd_near_pct: float = 0.98) -> str:
+    """サイト用チャート・パターンデータをエクスポートする。
+
+    対象銘柄（自動選定）:
+    1. 監視銘柄リスト（watchlist.json）の全銘柄 → 必ず含む
+    2. ポートフォリオ（portfolio.json）の全銘柄 → 必ず含む
+    3. 年初来高値更新圏（price >= ytd_high * ytd_near_pct）のPASS銘柄
 
     Args:
-        min_score: 最低スコア（デフォルト7、全PASS銘柄なら6）
-        max_days: チャートに含める最大日数（デフォルト200）
+        extra_codes: カンマ区切りで追加銘柄コード（例: "7203,6758"）
+        max_days: チャート日数（デフォルト200）
+        ytd_near_pct: 年初来高値の何%以内を対象にするか（デフォルト0.98）
     """
     if not RESULTS_FILE.exists():
         return "ERROR: screen_full results not found. Run screen_full first."
 
     data = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
-    pass_codes = []
-    # Support both dict format {"code": {...}} and list format [{...}]
-    items = data.values() if isinstance(data, dict) else data
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        code = item.get("code", "")
-        if not code:
-            continue
-        # Get score
-        score_str = item.get("score", "0/7")
-        if isinstance(item.get("minervini"), dict):
-            score_str = item["minervini"].get("score", score_str)
-        try:
-            score_val = int(score_str.split("/")[0])
-        except (ValueError, IndexError):
-            continue
-        if score_val >= min_score:
-            pass_codes.append(code)
+    items_dict = data if isinstance(data, dict) else {}
+    if isinstance(data, list):
+        items_dict = {i.get("code", ""): i for i in data if isinstance(i, dict)}
 
-    if not pass_codes:
-        return "No PASS stocks found"
+    # 1. Watchlist codes (always included)
+    watchlist = _load_watchlist()
+    wl_codes = set(watchlist.keys())
+
+    # 2. Portfolio codes (always included)
+    portfolio = _load_portfolio()
+    pf_codes = set(portfolio.keys())
+
+    # 3. YTD high stocks (PASS with price near ytd_high)
+    ytd_codes = set()
+    for code, item in items_dict.items():
+        if code == "__meta__" or not isinstance(item, dict):
+            continue
+        if not item.get("passed"):
+            continue
+        ytd_high = item.get("ytd_high")
+        price = item.get("price", 0)
+        if ytd_high and price >= ytd_high * ytd_near_pct:
+            ytd_codes.add(code)
+
+    # 4. Extra codes from argument
+    extra = set()
+    if extra_codes:
+        extra = {c.strip() for c in extra_codes.split(",") if c.strip()}
+
+    target_codes = wl_codes | pf_codes | ytd_codes | extra
+    if not target_codes:
+        return "No target stocks found (no watchlist, portfolio, or YTD-high stocks)"
 
     chart_data = {}
     pattern_data = {}
-    exported = 0
-    patterns_found = 0
-
     api_fetched = 0
-    for code in pass_codes:
+
+    for code in sorted(target_codes):
         df = _load_daily_csv(code)
         if df.empty:
-            # Fallback: fetch from API
-            try:
-                bars = _fetch_daily(code)
-                if not bars:
-                    continue
-                df = _daily_to_df(bars)
-                # Save CSV for future use
-                CSV_DIR.mkdir(parents=True, exist_ok=True)
-                df.reset_index().to_csv(
-                    CSV_DIR / f"{code}_daily.csv", index=False
-                )
+            df = _ensure_csv(code)
+            if not df.empty:
                 api_fetched += 1
-                time.sleep(REQUEST_SLEEP_SEC)
-            except Exception:
-                continue
-
-        # Daily OHLCV for chart (truncate to max_days)
-        df_clean = df.dropna(subset=["open", "high", "low", "close"]).tail(max_days)
-        records = []
-        for date, row in df_clean.iterrows():
-            records.append({
-                "time": date.strftime("%Y-%m-%d"),
-                "open": round(float(row["open"]), 1),
-                "high": round(float(row["high"]), 1),
-                "low": round(float(row["low"]), 1),
-                "close": round(float(row["close"]), 1),
-                "volume": int(row["volume"]) if pd.notna(row["volume"]) else 0,
-            })
-        chart_data[code] = records
-        exported += 1
-
-        # Pattern detection
-        patterns = _detect_all_patterns(df)
-        detected = [k for k, v in patterns.items() if v.get("detected")]
-        if detected:
-            pattern_data[code] = {
-                "patterns": detected,
-                "details": {k: v for k, v in patterns.items() if v.get("detected")},
-            }
-            patterns_found += 1
+        if df.empty:
+            continue
+        _export_one(code, df, max_days, chart_data, pattern_data)
 
     # Save chart data
     chart_path = GITHUB_DIR / "chart_data.json"
@@ -1846,12 +1887,39 @@ def export_chart_data(min_score: int = 7, max_days: int = 200) -> str:
         json.dumps(pattern_data, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
+    sz = chart_path.stat().st_size // 1024
     return (
-        f"OK: Exported {exported} stocks (API fetched: {api_fetched})\n"
-        f"  Chart data: {chart_path} ({chart_path.stat().st_size // 1024} KB)\n"
-        f"  Pattern data: {pat_path} (patterns found: {patterns_found})\n"
+        f"OK: Exported {len(chart_data)} stocks (API fetched: {api_fetched})\n"
+        f"  Watchlist: {len(wl_codes)}, Portfolio: {len(pf_codes)}, "
+        f"YTD-high: {len(ytd_codes)}, Extra: {len(extra)}\n"
+        f"  Chart data: {chart_path} ({sz} KB)\n"
+        f"  Pattern data: {pat_path} (patterns: {len(pattern_data)})\n"
         f"Push to invest-data repo to update the site."
     )
+
+
+@mcp.tool()
+def export_site_data() -> str:
+    """watchlist.jsonとportfolio.jsonをGitHubリポジトリにコピーする。
+
+    invest-dataにpushすればサイトで監視銘柄リスト・ポートフォリオが表示される。
+    """
+    copied = []
+    for src_path, name in [
+        (WATCHLIST_FILE, "watchlist.json"),
+        (PORTFOLIO_FILE, "portfolio.json"),
+    ]:
+        dst = GITHUB_DIR / name
+        if src_path.exists():
+            content = src_path.read_text(encoding="utf-8")
+            dst.write_text(content, encoding="utf-8")
+            copied.append(f"  {name}: {dst}")
+        else:
+            # Write empty JSON
+            dst.write_text("{}", encoding="utf-8")
+            copied.append(f"  {name}: (empty) {dst}")
+
+    return "OK: Copied to GITHUB_DIR\n" + "\n".join(copied)
 
 
 # ---------------------------------------------------------------------------
