@@ -1966,10 +1966,23 @@ def export_chart_data(extra_codes: str = "", max_days: int = 200,
         max_days: チャート日数（デフォルト200）
         ytd_near_pct: 年初来高値の何%以内を対象にするか（デフォルト0.98）
     """
-    if not RESULTS_FILE.exists():
-        return "ERROR: screen_full results not found. Run screen_full first."
+    # Try invest-data (site version) first, fallback to local
+    data = None
+    _INVEST_DATA_URL = (
+        "https://raw.githubusercontent.com/"
+        "yangpinggaoye15-dotcom/invest-data/main/screen_full_results.json"
+    )
+    try:
+        resp = requests.get(_INVEST_DATA_URL, timeout=15)
+        if resp.ok:
+            data = resp.json()
+    except Exception:
+        pass
+    if data is None:
+        if not RESULTS_FILE.exists():
+            return "ERROR: screen_full results not found."
+        data = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
 
-    data = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
     items_dict = data if isinstance(data, dict) else {}
     if isinstance(data, list):
         items_dict = {i.get("code", ""): i for i in data if isinstance(i, dict)}
@@ -2084,10 +2097,23 @@ def export_fins_data(extra_codes: str = "", ytd_near_pct: float = 0.98) -> str:
         extra_codes: カンマ区切りで追加銘柄コード
         ytd_near_pct: 年初来高値の何%以内を対象にするか（デフォルト0.98）
     """
-    if not RESULTS_FILE.exists():
-        return "ERROR: screen_full results not found."
+    # Try invest-data (site version) first, fallback to local
+    data = None
+    _INVEST_DATA_URL = (
+        "https://raw.githubusercontent.com/"
+        "yangpinggaoye15-dotcom/invest-data/main/screen_full_results.json"
+    )
+    try:
+        resp = requests.get(_INVEST_DATA_URL, timeout=15)
+        if resp.ok:
+            data = resp.json()
+    except Exception:
+        pass
+    if data is None:
+        if not RESULTS_FILE.exists():
+            return "ERROR: screen_full results not found."
+        data = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
 
-    data = json.loads(RESULTS_FILE.read_text(encoding="utf-8"))
     items_dict = data if isinstance(data, dict) else {}
 
     # Target stocks (same logic as export_chart_data)
