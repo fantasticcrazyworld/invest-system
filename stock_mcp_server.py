@@ -1881,7 +1881,8 @@ def screen_patterns(min_score: int = 6) -> str:
 
 
 def _export_one(code: str, df: pd.DataFrame, max_days: int,
-                chart_data: dict, pattern_data: dict):
+                chart_data: dict, pattern_data: dict,
+                timeline_data: dict = None):
     """Export chart + pattern data for a single stock."""
     df_clean = df.dropna(subset=["open", "high", "low", "close"]).tail(max_days)
     records = []
@@ -1903,6 +1904,32 @@ def _export_one(code: str, df: pd.DataFrame, max_days: int,
             "patterns": detected,
             "details": {k: v for k, v in patterns.items() if v.get("detected")},
         }
+
+    # Timeline: YTD high date, 52-week high date
+    if timeline_data is not None:
+        closes = df["close"].dropna()
+        tl = {}
+        # YTD high date
+        try:
+            ytd_start = f"{datetime.now().year}-01-01"
+            ytd_df = closes[closes.index >= ytd_start]
+            if not ytd_df.empty:
+                ytd_high_date = ytd_df.idxmax()
+                tl["ytd_high_date"] = ytd_high_date.strftime("%Y-%m-%d")
+                tl["ytd_high_price"] = round(float(ytd_df.max()), 1)
+        except Exception:
+            pass
+        # 52-week high date
+        try:
+            w52 = closes.tail(252)
+            if not w52.empty:
+                high52_date = w52.idxmax()
+                tl["high52_date"] = high52_date.strftime("%Y-%m-%d")
+                tl["high52_price"] = round(float(w52.max()), 1)
+        except Exception:
+            pass
+        if tl:
+            timeline_data[code] = tl
 
 
 def _ensure_csv(code: str) -> pd.DataFrame:
@@ -1978,6 +2005,7 @@ def export_chart_data(extra_codes: str = "", max_days: int = 200,
 
     chart_data = {}
     pattern_data = {}
+    timeline_data = {}
     api_fetched = 0
 
     for code in sorted(target_codes):
@@ -1988,7 +2016,8 @@ def export_chart_data(extra_codes: str = "", max_days: int = 200,
                 api_fetched += 1
         if df.empty:
             continue
-        _export_one(code, df, max_days, chart_data, pattern_data)
+        _export_one(code, df, max_days, chart_data, pattern_data,
+                    timeline_data)
 
     # Save chart data
     chart_path = GITHUB_DIR / "chart_data.json"
@@ -2002,6 +2031,12 @@ def export_chart_data(extra_codes: str = "", max_days: int = 200,
         json.dumps(pattern_data, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
+    # Save timeline data (YTD high dates, 52w high dates)
+    tl_path = GITHUB_DIR / "timeline_data.json"
+    tl_path.write_text(
+        json.dumps(timeline_data, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
     sz = chart_path.stat().st_size // 1024
     return (
         f"OK: Exported {len(chart_data)} stocks (API fetched: {api_fetched})\n"
@@ -2009,6 +2044,7 @@ def export_chart_data(extra_codes: str = "", max_days: int = 200,
         f"YTD-high: {len(ytd_codes)}, Extra: {len(extra)}\n"
         f"  Chart data: {chart_path} ({sz} KB)\n"
         f"  Pattern data: {pat_path} (patterns: {len(pattern_data)})\n"
+        f"  Timeline data: {tl_path} ({len(timeline_data)} stocks)\n"
         f"Push to invest-data repo to update the site."
     )
 
