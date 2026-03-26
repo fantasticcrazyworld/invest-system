@@ -94,6 +94,7 @@
       <div style="display:flex;flex-direction:column;gap:3px;margin-top:12px"><button onclick="saveSim()" style="padding:6px;background:#30363d;border:1px solid #f0b429;border-radius:6px;color:#f0b429;cursor:pointer;font-size:11px">保存</button><button onclick="aiSim()" style="padding:6px;background:#1a73e8;border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:11px">AI中期計画</button><button onclick="runBacktest()" style="padding:6px;background:#0d1117;border:1px solid #58a6ff;border-radius:6px;color:#58a6ff;cursor:pointer;font-size:11px">バックテスト</button></div>
     </div>
     <div id="sim-result"></div>
+    <div id="backtest-result"></div>
   </div>
 </div>
 <div class="page" id="page-watchlist">
@@ -833,7 +834,7 @@ function initSim(code,finsRecords){
   document.getElementById('sim-headcount').value=saved?saved.headcount||0:0;
   document.getElementById('sim-salary').value=saved?saved.salary||0:0;
   document.getElementById('sim-section').style.display='block';
-  setTimeout(function(){runSim();runBacktest();},100);
+  setTimeout(function(){runSim();},100);
 }
 function runSim(){
   if(!simBaseData||!simBaseData.sales)return;
@@ -965,7 +966,7 @@ function runBacktest(){
   if(!simCode)return;
   var fd=window._finsData||{};
   var records=fd[simCode];
-  if(!records||!records.length){document.getElementById("sim-result").innerHTML+='<div style="color:#f85149;margin-top:8px">業績データがありません</div>';return;}
+  if(!records||!records.length){document.getElementById("backtest-result").innerHTML='<div style="color:#f85149;margin-top:8px">業績データがありません</div>';return;}
   var fyRecords=records.filter(function(r){return r.period==="FY";}).sort(function(a,b){return a.fy.localeCompare(b.fy);});
   if(fyRecords.length<2){return;}
   var h='<div class="fins-section" style="margin-top:16px"><div class="fins-section-title">業績予想バックテスト（予想 vs 実績）</div>';
@@ -986,7 +987,7 @@ function runBacktest(){
     h+='</tr>';
   }
   h+='</tbody></table></div></div>';
-  document.getElementById("sim-result").innerHTML+=h;
+  document.getElementById("backtest-result").innerHTML=h;
 }
 
 loadData();loadChartData();loadPatternData();loadFinsData();loadTimeline();loadKnowledge();loadWatchlist();loadPortfolio();renderPresets();setTimeout(loadCash,500);</script></body></html>

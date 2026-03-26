@@ -286,12 +286,26 @@ def _load_results() -> dict:
 
 def _sanitize_nans(obj):
     """Replace float NaN/Inf with None for valid JSON output."""
-    if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
-        return None
+    try:
+        if isinstance(obj, (float, int)) and math.isnan(float(obj)):
+            return None
+        if isinstance(obj, (float, int)) and math.isinf(float(obj)):
+            return None
+    except (TypeError, ValueError):
+        pass
     if isinstance(obj, dict):
         return {k: _sanitize_nans(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [_sanitize_nans(v) for v in obj]
+    # Handle numpy types
+    if hasattr(obj, 'item'):
+        try:
+            v = obj.item()
+            if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                return None
+            return v
+        except (TypeError, ValueError):
+            pass
     return obj
 
 def _save_results(results: dict):
