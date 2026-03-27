@@ -54,6 +54,7 @@ jobs:
           git add -f data/screen_full_progress.json || true
           git add -f data/screen_full.log || true
           git diff --cached --quiet || git commit -m "screening $(date +'%Y-%m-%d')"
+          git pull --rebase origin main
           git push
 
       - name: Sync to invest-data repo
