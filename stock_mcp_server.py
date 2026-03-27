@@ -37,7 +37,9 @@ mcp = FastMCP("stock-analyzer")
 # Paths & constants
 # ---------------------------------------------------------------------------
 
-BASE_DIR   = Path(r"C:\Users\yohei\Documents\invest-system")
+# Use environment variable or default to local Windows path
+_DEFAULT_BASE = r"C:\Users\yohei\Documents\invest-system"
+BASE_DIR   = Path(os.environ.get("INVEST_BASE_DIR", _DEFAULT_BASE))
 DB_PATH    = BASE_DIR / "data" / "stock_prices.db"
 CSV_DIR    = BASE_DIR / "csv_output"
 CONFIG     = Path.home() / ".jquants_config.json"
@@ -48,7 +50,8 @@ MASTER_CACHE   = BASE_DIR / "data" / "equity_master_cache.json"
 PORTFOLIO_FILE = BASE_DIR / "data" / "portfolio.json"
 WATCHLIST_FILE = BASE_DIR / "data" / "watchlist.json"
 
-GITHUB_DIR  = Path(r"C:\Users\yohei\Documents\invest-system-github")
+_DEFAULT_GITHUB = r"C:\Users\yohei\Documents\invest-system-github"
+GITHUB_DIR  = Path(os.environ.get("INVEST_GITHUB_DIR", _DEFAULT_GITHUB))
 CHART_DIR   = GITHUB_DIR / "charts"
 
 MASTER_CACHE_TTL_DAYS = 7

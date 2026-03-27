@@ -49,7 +49,7 @@ NIKKEI225_CODE    = "1321"
 ETF_CODE_PREFIXES = ("13", "14", "15", "16", "17", "18", "19")
 
 # DB for long-term price storage (shared with stock_mcp_server.py)
-_INVEST_DIR = Path(r"C:\Users\yohei\Documents\invest-system")
+_INVEST_DIR = Path(os.environ.get("INVEST_BASE_DIR", r"C:\Users\yohei\Documents\invest-system"))
 DB_PATH     = _INVEST_DIR / "data" / "stock_prices.db"
 
 

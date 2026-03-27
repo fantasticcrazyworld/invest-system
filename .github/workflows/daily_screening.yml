@@ -28,11 +28,16 @@ jobs:
       - name: Run screening
         env:
           JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
-        run: python run_screen_full.py --fresh
+          INVEST_BASE_DIR: ${{ github.workspace }}
+        run: |
+          mkdir -p data csv_output
+          python run_screen_full.py --fresh
 
       - name: Export chart, pattern, and financial data
         env:
           JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
+          INVEST_BASE_DIR: ${{ github.workspace }}
+          INVEST_GITHUB_DIR: ${{ github.workspace }}
         run: |
           python -c "
           import stock_mcp_server as s
