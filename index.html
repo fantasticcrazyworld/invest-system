@@ -523,8 +523,7 @@ function loadChart(){
   window.addEventListener('resize',function(){if(lwChart)lwChart.applyOptions({width:container.clientWidth});});
   analyzeVolume(ohlcv);
   renderStockTrend(ohlcv);
-  idxCompareOn=false;var icb=document.getElementById('idx-compare-btn');if(icb){icb.style.background='';icb.style.color='';icb.style.borderColor='';icb.style.fontWeight='';}
-  if(idxCompareSeries&&lwChart){lwChart.removeSeries(idxCompareSeries);idxCompareSeries=null;}
+  idxCompareOn=false;idxCompareSeries=null;var icb=document.getElementById('idx-compare-btn');if(icb){icb.style.background='';icb.style.color='';icb.style.borderColor='';icb.style.fontWeight='';}
 }
 function openChart(code){
   showPage('chart',document.querySelectorAll('.nav-btn')[1]);
@@ -1423,13 +1422,15 @@ function showIdxCompare(){
   var stockBase=stockMap[dates[0]],nkBase=nkMap[dates[0]];
   var nkNorm=dates.map(function(d){return{time:d,value:((nkMap[d]/nkBase-1)*100)};});
   // Add normalized line
-  if(idxCompareSeries){lwChart.removeSeries(idxCompareSeries);idxCompareSeries=null;}
+  try{if(idxCompareSeries)lwChart.removeSeries(idxCompareSeries);}catch(e){}
+  idxCompareSeries=null;
   idxCompareSeries=lwChart.addLineSeries({color:'#ff6b6b',lineWidth:2,lineStyle:2,priceLineVisible:false,lastValueVisible:true,title:'日経225',priceScaleId:'compare'});
   idxCompareSeries.priceScale().applyOptions({scaleMargins:{top:0.1,bottom:0.1}});
   idxCompareSeries.setData(nkNorm);
 }
 function hideIdxCompare(){
-  if(lwChart&&idxCompareSeries){lwChart.removeSeries(idxCompareSeries);idxCompareSeries=null;}
+  try{if(lwChart&&idxCompareSeries)lwChart.removeSeries(idxCompareSeries);}catch(e){}
+  idxCompareSeries=null;
 }
 
 loadData();loadChartData();loadPatternData();loadFinsData();loadTimeline();loadKnowledge();loadWatchlist();loadPortfolio();loadIndexData();renderPresets();setTimeout(loadCash,500);setTimeout(function(){initPosCalc();renderSectorDist();},1000);
