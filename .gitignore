@@ -1,4 +1,27 @@
-﻿data/
-*.log
+﻿# Python
 *.pyc
 __pycache__/
+
+# データ（invest-dataリポジトリで管理）
+data/
+
+# 自動生成JSON（stock_mcp_server.pyが生成、invest-dataで管理）
+chart_data.json
+fins_data.json
+pattern_data.json
+timeline_data.json
+
+# 自動生成レポート（invest-dataリポジトリで管理）
+reports/daily/
+reports/audit_log.md
+reports/simulation_log.json
+reports/simulation_daily.md
+reports/source_log.md
+reports/goals_kpi.md
+reports/verification.md
+
+# バックアップ・ログ
+index_backup.html
+*.bak
+logs/
+*.log
