@@ -22,6 +22,80 @@ MODEL = 'claude-sonnet-4-6'
 GEMINI_KEY = os.environ.get('GEMINI_API', '')
 GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
+# ─── チーム別KPI定義（全チーム共通の評価基準） ────────────────────
+TEAM_KPIS = {
+    '情報収集チーム': {
+        'description': '市場情報を正確・迅速に収集し、後続チームに届ける',
+        'kpis': [
+            {'id': 'info_coverage',    'what': '必須8項目の網羅率',         'target': '100%',     'how': '指数/為替/債券/コモディティ/イベント/セクター/ニュース/RS上位が全て記載されているか'},
+            {'id': 'info_accuracy',    'what': 'データ誤り件数',             'target': '0件/日',   'how': 'スクリーニング数値と実際のGemini取得値が整合しているか'},
+            {'id': 'source_quality',   'what': '信頼度4以上ソース比率',      'target': '70%以上',  'how': 'source_log.md の reliability≥4 件数 / 全件数'},
+            {'id': 'source_count',     'what': '情報源数',                   'target': '3件以上',  'how': 'Gemini groundingChunks の件数'},
+        ]
+    },
+    '分析チーム': {
+        'description': 'Aランク銘柄を正確に選定し、判断理由を明示する',
+        'kpis': [
+            {'id': 'a_rank_win_rate',  'what': 'Aランク銘柄の2週間後勝率',  'target': '60%以上',  'how': '検証チームがシミュレーションで追跡・集計'},
+            {'id': 'rs_retention',     'what': 'Aランク選定銘柄のRS維持率', 'target': '70%以上',  'how': '2週後もRS26w上位30%以内を維持している割合'},
+            {'id': 'reason_quality',   'what': '判断理由の具体性',           'target': '根拠3つ以上/銘柄', 'how': 'テクニカル/ファンダ/RS の3軸で根拠が記載されているか'},
+            {'id': 'stock_count',      'what': '評価銘柄数',                 'target': '5銘柄以上/日', 'how': 'A/B/Cランク合計の評価銘柄数'},
+        ]
+    },
+    'リスク管理チーム': {
+        'description': '資産を守り、ルールベースのリスク管理を徹底する',
+        'kpis': [
+            {'id': 'dd_compliance',    'what': 'DD許容上限遵守',             'target': '-10%以内', 'how': 'ポートフォリオ全体のドローダウンが-20万円を超えていないか'},
+            {'id': 'stoploss_coverage','what': '損切りライン設定率',          'target': '保有全銘柄100%', 'how': '各保有銘柄に損切り価格が設定・記載されているか'},
+            {'id': 'sector_limit',     'what': 'セクター集中度',             'target': '30%以内',  'how': '最大セクターの資産占有率が30%を超えていないか'},
+            {'id': 'alert_accuracy',   'what': '警告的中率（累積）',         'target': '60%以上',  'how': '過去の警告銘柄が実際に下落した割合（kpi_log.jsonで追跡）'},
+        ]
+    },
+    '投資戦略チーム': {
+        'description': '市場フェーズを正確に判定し、具体的なエントリー計画を立案する',
+        'kpis': [
+            {'id': 'phase_accuracy',   'what': 'フェーズ判定精度',           'target': '70%以上',  'how': '翌週の市場動向と当日判定（Attack/Steady/Defend）が一致した割合'},
+            {'id': 'entry_win_rate',   'what': 'エントリー後2週間勝率',      'target': '50%以上',  'how': '検証チームが追跡。エントリー推奨銘柄が2週後に利益圏にある割合'},
+            {'id': 'rr_ratio',         'what': '平均RR比',                   'target': '3.0以上',  'how': '各エントリー候補の（目標-エントリー）/（エントリー-損切り）の平均'},
+            {'id': 'plan_concreteness','what': 'アクションプランの具体性',   'target': '銘柄/価格/理由を全て明記', 'how': 'エントリー候補テーブルに銘柄名・コード・価格・損切り・目標・RR比・根拠が記載されているか'},
+        ]
+    },
+    'レポート統括': {
+        'description': '全チーム情報を統合し、読みやすい日次レポートを作成する',
+        'kpis': [
+            {'id': 'integration_rate', 'what': '全チームレポート統合率',     'target': '100%',     'how': '情報収集/分析/リスク/戦略の4チームの内容が全て含まれているか'},
+            {'id': 'next_day_points',  'what': '翌日注目点の明記',           'target': '必須3件以上', 'how': '「来週以降の注目点」または「翌日の注目点」セクションに3件以上あるか'},
+            {'id': 'fact_ai_label',    'what': '[事実]/[AI分析]ラベル遵守', 'target': '100%',     'how': 'レポート内の全セクションに[事実]または[AI分析]ラベルが付いているか'},
+        ]
+    },
+    'セキュリティチーム': {
+        'description': 'コードとシステムの安全性を監視し、脅威を早期検知する',
+        'kpis': [
+            {'id': 'critical_zero',    'what': '重大脆弱性の未報告ゼロ',     'target': '0件',      'how': 'CRITICAL/HIGH相当の脆弱性が発見された場合、必ず報告されているか'},
+            {'id': 'code_review',      'what': 'コードレビュー実施',         'target': '週1回以上', 'how': '直近7日間でrun_teams.py/index.htmlのレビューを実施したか'},
+            {'id': 'threat_freshness', 'what': '脅威情報の鮮度',             'target': '当日情報を含む', 'how': 'Geminiが収集した脅威情報に当日（{TODAY}）の日付が含まれているか'},
+        ]
+    },
+    '内部監査チーム': {
+        'description': '全チームのKPI達成状況を評価し、改善サイクルを推進する',
+        'kpis': [
+            {'id': 'audit_coverage',   'what': '全チーム評価完了率',         'target': '100%',     'how': '全チームに対して評価スコアが付いているか'},
+            {'id': 'improvement_count','what': '改善提案数',                 'target': '2件以上/日', 'how': '優先度「高」または「中」の改善提案が合計2件以上あるか'},
+            {'id': 'followup_rate',    'what': '前回提案フォローアップ率',   'target': '100%',     'how': '前回の改善提案に対して今回の評価で言及しているか'},
+            {'id': 'pdca_cycle',       'what': 'PDCA回転数',                 'target': '週4回以上', 'how': '過去7日間でaudit_log.mdへの書き込みが4回以上あるか'},
+        ]
+    },
+    '検証チーム': {
+        'description': 'シミュレーション追跡と差異分析により、全チームの予測精度を向上させる',
+        'kpis': [
+            {'id': 'sim_direction',    'what': 'シミュレーション方向一致率', 'target': '50%→60%（成長目標）', 'how': '予測した上昇/下落方向と実際の結果が一致した割合'},
+            {'id': 'analysis_complete','what': '差異分析完了率',             'target': '100%',     'how': '追跡終了した全シミュレーションに原因分析が付いているか'},
+            {'id': 'kpi_check',        'what': 'KPI自動チェック実施',        'target': '毎日',     'how': 'kpi_log.jsonに当日分の記録があるか'},
+            {'id': 'feedback_count',   'what': '他チームへのフィードバック数', 'target': '1件以上/週', 'how': '分析チーム・投資戦略チームへの改善フィードバックが週1件以上あるか'},
+        ]
+    },
+}
+
 # 信頼性スコア定義（ドメインベース）
 SOURCE_RELIABILITY = {
     'nikkei.com': ('日経新聞', 5), 'reuters.com': ('Reuters', 5),
@@ -104,6 +178,37 @@ def write_report(name: str, content: str):
     path = REPORT_DIR / f'{name}.md'
     path.write_text(content, encoding='utf-8')
     print(f'  -> {path}')
+
+
+def save_kpi_log(kpi_results: dict):
+    """KPI達成状況を kpi_log.json に追記（日次トレンド分析用）"""
+    log_path = REPORT_DIR / 'kpi_log.json'
+    existing = []
+    if log_path.exists():
+        try:
+            existing = json.loads(log_path.read_text(encoding='utf-8'))
+        except Exception:
+            pass
+    # 当日分を上書き or 追加
+    existing = [e for e in existing if e.get('date') != TODAY]
+    existing.append({'date': TODAY, 'teams': kpi_results})
+    # 直近90日分だけ保持
+    existing = existing[-90:]
+    log_path.write_text(json.dumps(existing, ensure_ascii=False, indent=2), encoding='utf-8')
+    print(f'  -> kpi_log.json 更新')
+
+
+def build_kpi_check_prompt() -> str:
+    """内部監査用: 全チームKPI一覧をテキストに変換"""
+    lines = ['## 各チームのKPI定義']
+    for team, info in TEAM_KPIS.items():
+        lines.append(f'\n### {team}')
+        lines.append(f'ミッション: {info["description"]}')
+        lines.append('| ID | 何を測る | 目標値 | 評価方法 |')
+        lines.append('|----|---------|--------|---------|')
+        for k in info['kpis']:
+            lines.append(f'| {k["id"]} | {k["what"]} | {k["target"]} | {k["how"]} |')
+    return '\n'.join(lines)
 
 
 # ─── Team 1: 情報収集 ────────────────────────────────────────────
@@ -629,16 +734,12 @@ def run_internal_audit():
     gemini_text, sources = call_gemini(g_prompt)
     save_source_log('内部監査チーム', sources, gemini_text)
 
-    prompt = f"""あなたは投資チームの「内部監査チーム」です。本日 {TODAY} の全チームを監査し、改善提案を行ってください。
+    kpi_definitions = build_kpi_check_prompt()
 
-## 各チームの役割定義
-1. 情報収集チーム: Gemini(Google Search)+Claudeで市場情報収集・構造化
-2. 分析チーム: Gemini(銘柄情報)+Claudeでテクニカル/ファンダ統合分析・A/B/Cランク
-3. リスク管理チーム: Gemini(リスク情報)+Claudeでポートフォリオリスク評価
-4. 投資戦略チーム: Gemini(センチメント)+Claudeで戦略立案・アクションプラン
-5. レポート統括: Gemini(翌日情報)+Claudeで日次統合レポート作成
-6. セキュリティチーム: Gemini(脅威情報)+Claudeでコード監査
-7. 内部監査チーム（自己）: 全チーム品質評価・改善提案
+    prompt = f"""あなたは投資チームの「内部監査チーム」です。本日 {TODAY} の全チームを監査し、KPI達成状況を評価して改善提案を行ってください。
+
+## 各チームのKPI定義
+{kpi_definitions}
 
 ## 本日の各チームレポート
 {reports_str}
@@ -653,12 +754,12 @@ def run_internal_audit():
 {gemini_text}
 
 ## 評価観点（各5段階）
-- 網羅性: 役割定義の全項目をカバーしているか
+- 網羅性: KPI定義の全項目をカバーしているか
 - 具体性: 数値・銘柄コード・根拠が明記されているか
 - 有用性: 投資判断に実際に役立つ内容か
 - 一貫性: 過去レポートと矛盾がないか
 - 連携性: 前チームの情報を適切に引き継いでいるか
-- AI活用度: Gemini+Claudeの二重確認が有効に機能しているか（新規）
+- AI活用度: Gemini+Claudeの二重確認が有効に機能しているか
 
 ## 出力フォーマット（必ずこの形式で）
 # 内部監査チーム レポート
@@ -667,7 +768,24 @@ def run_internal_audit():
 ## エグゼクティブサマリー
 （最重要発見を3点以内で）
 
-## チーム別評価
+## KPI達成状況
+| チーム | KPI項目 | 目標 | 達成状況 | 評価 |
+|--------|---------|------|---------|------|
+| 情報収集 | 必須8項目網羅率 | 100% | XX% | ✅/⚠️/❌ |
+| 情報収集 | データ誤り件数 | 0件 | X件 | ✅/⚠️/❌ |
+| 分析 | 評価銘柄数 | 5銘柄以上 | X銘柄 | ✅/⚠️/❌ |
+| 分析 | 判断理由の具体性 | 根拠3つ以上 | X個 | ✅/⚠️/❌ |
+| リスク管理 | DD許容上限遵守 | -10%以内 | XX% | ✅/⚠️/❌ |
+| リスク管理 | 損切りライン設定率 | 100% | XX% | ✅/⚠️/❌ |
+| 投資戦略 | 平均RR比 | 3.0以上 | X.X | ✅/⚠️/❌ |
+| 投資戦略 | アクションプランの具体性 | 全項目明記 | ✅/❌ | ✅/⚠️/❌ |
+| レポート統括 | 全チーム統合率 | 100% | XX% | ✅/⚠️/❌ |
+| レポート統括 | [事実]/[AI分析]ラベル | 100% | XX% | ✅/⚠️/❌ |
+| セキュリティ | 重大脆弱性未報告 | 0件 | X件 | ✅/⚠️/❌ |
+| 内部監査 | 前回提案フォローアップ | 100% | XX% | ✅/⚠️/❌ |
+（本日評価できないKPIは「-」と記載）
+
+## チーム別評価スコア
 | チーム | 網羅性 | 具体性 | 有用性 | 一貫性 | 連携性 | AI活用度 | 総合 | 所見 |
 |--------|--------|--------|--------|--------|--------|---------|------|------|
 | 情報収集 | /5 | /5 | /5 | /5 | /5 | /5 | /5 | ... |
@@ -677,17 +795,17 @@ def run_internal_audit():
 | 統括 | /5 | /5 | /5 | /5 | /5 | /5 | /5 | ... |
 | セキュリティ | /5 | /5 | /5 | /5 | /5 | /5 | /5 | ... |
 
-## トレンド分析
-（繰り返し発生している問題・改善傾向）
+## KPIトレンド分析
+（繰り返し未達成のKPI・改善傾向）
 
 ## 改善提案
-### 優先度: 高
+### 優先度: 高（KPI未達成に直結）
 ...
-### 優先度: 中
+### 優先度: 中（品質向上）
 ...
 
-## 新チーム提案
-（不足機能があれば。なければ「なし」）
+## 新チーム・新KPI提案
+（不足機能や追加すべきKPIがあれば）
 
 ## 前回提案のフォローアップ
 ...
@@ -695,9 +813,24 @@ def run_internal_audit():
     result = call_claude(prompt, max_tokens=6000)
     write_report('internal_audit', result)
 
+    # KPIログ: チーム別スコアをJSONで保存（トレンド分析用）
+    kpi_scores = {}
+    for line in result.split('\n'):
+        # "| チーム名 | X | X | X | X | X | X | X |" の行をパース
+        parts = [p.strip() for p in line.split('|') if p.strip()]
+        if len(parts) >= 8 and parts[0] in ['情報収集', '分析', 'リスク管理', '投資戦略', '統括', 'セキュリティ']:
+            try:
+                kpi_scores[parts[0]] = {
+                    'coverage': parts[1], 'specificity': parts[2],
+                    'usefulness': parts[3], 'consistency': parts[4],
+                    'linkage': parts[5], 'ai_usage': parts[6], 'total': parts[7]
+                }
+            except IndexError:
+                pass
+    save_kpi_log(kpi_scores)
+
     # 監査ログに追記
     audit_log_path = Path('reports') / 'audit_log.md'
-    # サマリー行だけ抽出してログに追記
     summary_lines = [l for l in result.split('\n') if l.startswith('- ') or l.startswith('### 優先度')][:10]
     log_entry = f'\n## {TODAY}\n' + '\n'.join(summary_lines) + '\n'
     existing = audit_log_path.read_text(encoding='utf-8') if audit_log_path.exists() else '# 内部監査ログ\n'
