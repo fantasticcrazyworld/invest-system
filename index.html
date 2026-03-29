@@ -79,6 +79,25 @@
 .sim-result-badge.time{background:#2d2a0a;color:#f0b429}
 .sim-empty{padding:40px 20px;text-align:center;color:#8b949e;font-size:13px}
 .sim-hist-wrap{padding:0 14px 20px}
+/* ── Report ── */
+.report-team-tabs{display:flex;gap:4px;padding:10px 14px;flex-wrap:wrap;border-bottom:1px solid #21262d}
+.report-team-btn{padding:5px 12px;font-size:12px;border:1px solid #30363d;border-radius:6px;background:none;color:#8b949e;cursor:pointer;white-space:nowrap}
+.report-team-btn.active{background:#f0b429;color:#0d1117;border-color:#f0b429;font-weight:600}
+.report-date-nav{display:flex;gap:4px;padding:8px 14px;overflow-x:auto;border-bottom:1px solid #21262d}
+.report-date-btn{padding:4px 10px;font-size:11px;border:1px solid #30363d;border-radius:4px;background:none;color:#8b949e;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.report-date-btn.active{background:#30363d;color:#e6edf3}
+.report-body{padding:14px;line-height:1.7;font-size:13px}
+.report-body h1{font-size:16px;font-weight:700;color:#f0b429;margin:16px 0 8px;border-bottom:1px solid #21262d;padding-bottom:6px}
+.report-body h2{font-size:14px;font-weight:600;color:#e6edf3;margin:14px 0 6px}
+.report-body h3{font-size:13px;font-weight:600;color:#8b949e;margin:10px 0 4px}
+.report-body table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
+.report-body th{background:#161b22;padding:6px 10px;text-align:left;color:#8b949e;border:1px solid #30363d}
+.report-body td{padding:6px 10px;border:1px solid #21262d;color:#e6edf3}
+.report-body strong{color:#f0b429}
+.report-body code{background:#21262d;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px}
+.report-body p{margin:6px 0;color:#c9d1d9}
+.report-body ul,.report-body ol{margin:6px 0 6px 20px;color:#c9d1d9}
+.report-body blockquote{border-left:3px solid #f0b429;margin:8px 0;padding:4px 12px;color:#8b949e}
 /* ── Mobile ── */
 @media(max-width:480px){
   .metrics{grid-template-columns:repeat(2,1fr)}
@@ -95,7 +114,7 @@
   .chat-panel{width:100% !important;right:0 !important;bottom:0 !important;border-radius:16px 16px 0 0 !important}
   th,td{padding:6px 8px}
 }
-</style><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#f0b429"><script src="lightweight-charts.js"></script></head><body><div class="header"><div class="logo">MINERVINI TERMINAL <span>yohei</span></div><div class="updated" id="updated">読み込み中...</div></div><div class="nav"><button class="nav-btn active" onclick="showPage('screening',this)">スクリーニング</button><button class="nav-btn" onclick="showPage('chart',this)">チャート</button><button class="nav-btn" onclick="showPage('fins',this)">業績</button><button class="nav-btn" onclick="showPage('watchlist',this)">監視リスト</button><button class="nav-btn" onclick="showPage('portfolio',this)">ポートフォリオ</button><button class="nav-btn" onclick="showPage('health',this)">市況</button><button class="nav-btn" onclick="showPage('simulation',this)">シミュレーション</button></div><div class="page active" id="page-screening"><div class="metrics"><div class="metric"><div class="metric-label">対象銘柄</div><div class="metric-value muted" id="m-total">-</div></div><div class="metric"><div class="metric-label">PASS 6/7+</div><div class="metric-value green" id="m-pass">-</div></div><div class="metric"><div class="metric-label">満点 7/7</div><div class="metric-value gold" id="m-perfect">-</div></div><div class="metric"><div class="metric-label">高値更新圏</div><div class="metric-value gold" id="m-nearhigh">-</div></div></div><div class="filter-panel"><div class="search-box"><span style="color:#8b949e;font-size:14px">&#128269;</span><input type="text" id="search-input" placeholder="銘柄コード・銘柄名で検索..." oninput="applyFilters()"></div><div class="filter-row"><span class="filter-label">スコア</span><div class="slider-wrap"><input type="range" id="score-slider" min="1" max="7" value="6" step="1" oninput="updateLabel('score-slider','score-val',v=>v+'/7以上')"><span class="slider-val" id="score-val">6/7以上</span></div></div><div class="filter-row"><span class="filter-label">高値比</span><div class="slider-wrap"><input type="range" id="highpct-slider" min="70" max="100" value="90" step="1" oninput="updateLabel('highpct-slider','highpct-val',v=>v+'%以上')"><span class="slider-val" id="highpct-val">90%以上</span></div></div><div class="filter-row"><span class="filter-label">RS26w</span><div class="toggle-wrap"><div class="toggle" id="rs-toggle" onclick="toggleRS()"></div><span class="toggle-label" id="rs-label">全て表示</span></div></div><div class="filter-row"><span class="filter-label">並び順</span><div class="slider-wrap"><select id="sort-select" onchange="applyFilters()" style="background:#161b22;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:4px 8px;font-size:12px;flex:1"><option value="score">スコア順</option><option value="rs26w">RS26w強い順</option><option value="high_pct">高値比順</option><option value="price">株価順</option><option value="pattern">パターン優先</option></select></div></div><div class="custom-filter">
+</style><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#f0b429"><script src="lightweight-charts.js"></script></head><body><div class="header"><div class="logo">MINERVINI TERMINAL <span>yohei</span></div><div class="updated" id="updated">読み込み中...</div></div><div class="nav"><button class="nav-btn active" onclick="showPage('screening',this)">スクリーニング</button><button class="nav-btn" onclick="showPage('chart',this)">チャート</button><button class="nav-btn" onclick="showPage('fins',this)">業績</button><button class="nav-btn" onclick="showPage('watchlist',this)">監視リスト</button><button class="nav-btn" onclick="showPage('portfolio',this)">ポートフォリオ</button><button class="nav-btn" onclick="showPage('health',this)">市況</button><button class="nav-btn" onclick="showPage('simulation',this)">シミュレーション</button><button class="nav-btn" onclick="showPage('report',this)">レポート</button></div><div class="page active" id="page-screening"><div class="metrics"><div class="metric"><div class="metric-label">対象銘柄</div><div class="metric-value muted" id="m-total">-</div></div><div class="metric"><div class="metric-label">PASS 6/7+</div><div class="metric-value green" id="m-pass">-</div></div><div class="metric"><div class="metric-label">満点 7/7</div><div class="metric-value gold" id="m-perfect">-</div></div><div class="metric"><div class="metric-label">高値更新圏</div><div class="metric-value gold" id="m-nearhigh">-</div></div></div><div class="filter-panel"><div class="search-box"><span style="color:#8b949e;font-size:14px">&#128269;</span><input type="text" id="search-input" placeholder="銘柄コード・銘柄名で検索..." oninput="applyFilters()"></div><div class="filter-row"><span class="filter-label">スコア</span><div class="slider-wrap"><input type="range" id="score-slider" min="1" max="7" value="6" step="1" oninput="updateLabel('score-slider','score-val',v=>v+'/7以上')"><span class="slider-val" id="score-val">6/7以上</span></div></div><div class="filter-row"><span class="filter-label">高値比</span><div class="slider-wrap"><input type="range" id="highpct-slider" min="70" max="100" value="90" step="1" oninput="updateLabel('highpct-slider','highpct-val',v=>v+'%以上')"><span class="slider-val" id="highpct-val">90%以上</span></div></div><div class="filter-row"><span class="filter-label">RS26w</span><div class="toggle-wrap"><div class="toggle" id="rs-toggle" onclick="toggleRS()"></div><span class="toggle-label" id="rs-label">全て表示</span></div></div><div class="filter-row"><span class="filter-label">並び順</span><div class="slider-wrap"><select id="sort-select" onchange="applyFilters()" style="background:#161b22;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:4px 8px;font-size:12px;flex:1"><option value="score">スコア順</option><option value="rs26w">RS26w強い順</option><option value="high_pct">高値比順</option><option value="price">株価順</option><option value="pattern">パターン優先</option></select></div></div><div class="custom-filter">
 <div class="custom-filter-row">
 <input class="custom-filter-input" id="custom-input" placeholder="例: rs26w > 0.5  /  high_pct > 0.97 && score == 7" oninput="applyFilters()">
 <button class="custom-filter-btn" onclick="savePreset()">保存</button>
@@ -245,6 +264,21 @@
       <tbody id="sim-hist-body"><tr><td colspan="8" style="text-align:center;color:#8b949e;padding:20px">-</td></tr></tbody>
     </table>
   </div>
+</div>
+<div class="page" id="page-report">
+  <div class="report-team-tabs">
+    <button class="report-team-btn active" onclick="selectReportTeam('latest_report',this)">統合レポート</button>
+    <button class="report-team-btn" onclick="selectReportTeam('info_gathering',this)">情報収集</button>
+    <button class="report-team-btn" onclick="selectReportTeam('analysis',this)">分析</button>
+    <button class="report-team-btn" onclick="selectReportTeam('risk',this)">リスク管理</button>
+    <button class="report-team-btn" onclick="selectReportTeam('strategy',this)">投資戦略</button>
+    <button class="report-team-btn" onclick="selectReportTeam('internal_audit',this)">内部監査</button>
+    <button class="report-team-btn" onclick="selectReportTeam('security',this)">セキュリティ</button>
+    <button class="report-team-btn" onclick="selectReportTeam('report',this)">統括</button>
+    <button class="report-team-btn" onclick="selectReportTeam('verification',this)">検証</button>
+  </div>
+  <div class="report-date-nav" id="report-date-nav"></div>
+  <div id="report-body" class="report-body"><div class="loading"><div class="spinner"></div><div class="loading-text">読み込み中...</div></div></div>
 </div>
 <button class="chat-btn" onclick="toggleChat()" title="AIチャット">&#129302;</button>
 <div class="chat-panel" id="chat-panel">
@@ -460,7 +494,71 @@ async function sendChat(){
     if(sendBtn) sendBtn.disabled=false;
   }
 }
-function closeDetail(){document.getElementById("detail-panel").classList.remove("open");document.getElementById("overlay").classList.remove("show");}function showPage(n,btn){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));document.getElementById("page-"+n).classList.add("active");btn.classList.add("active");if(n==='simulation')initSimPage();}
+function closeDetail(){document.getElementById("detail-panel").classList.remove("open");document.getElementById("overlay").classList.remove("show");}function showPage(n,btn){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));document.getElementById("page-"+n).classList.add("active");btn.classList.add("active");if(n==='simulation')initSimPage();if(n==='report')initReportPage();}
+const REPORT_BASE="https://raw.githubusercontent.com/yangpinggaoye15-dotcom/invest-data/main/reports/";
+let currentReportTeam='latest_report',currentReportDate='',reportPageInited=false;
+function mdToHtml(md){
+  if(!md)return'';
+  return md
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^#{3}\s(.+)$/gm,'<h3>$1</h3>')
+    .replace(/^#{2}\s(.+)$/gm,'<h2>$1</h2>')
+    .replace(/^#{1}\s(.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/^\|(.+)\|$/gm,function(_,r){const cells=r.split('|');return'<tr>'+cells.map(c=>c.trim().match(/^[-:]+$/)?'':'<td>'+c.trim()+'</td>').filter(c=>c!='').join('')+'</tr>';})
+    .replace(/(<tr>.*<\/tr>\n?)+/g,'<table>$&</table>')
+    .replace(/^[-*]\s(.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>')
+    .replace(/^>\s(.+)$/gm,'<blockquote>$1</blockquote>')
+    .replace(/\[事実\]/g,'<span style="background:#0d2d15;color:#3fb950;padding:1px 6px;border-radius:3px;font-size:11px">[事実]</span>')
+    .replace(/\[AI分析\]/g,'<span style="background:#1a1a2e;color:#79c0ff;padding:1px 6px;border-radius:3px;font-size:11px">[AI分析]</span>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/^([^<\n].+)$/gm,'<p>$1</p>');
+}
+function initReportPage(){
+  if(reportPageInited)return;
+  reportPageInited=true;
+  // 直近14日のナビボタン生成
+  const nav=document.getElementById('report-date-nav');
+  const today=new Date();
+  let html='';
+  for(let i=0;i<14;i++){
+    const d=new Date(today);d.setDate(today.getDate()-i);
+    const ds=d.toISOString().slice(0,10);
+    html+=`<button class="report-date-btn" onclick="loadDateReport('${ds}',this)">${ds.slice(5)}</button>`;
+  }
+  nav.innerHTML=html;
+  loadReport('latest_report');
+}
+async function loadReport(filename){
+  const el=document.getElementById('report-body');
+  el.innerHTML='<div class="loading"><div class="spinner"></div><div class="loading-text">読み込み中...</div></div>';
+  try{
+    const url=REPORT_BASE+(filename.endsWith('.md')?filename:filename+'.md')+'?t='+Date.now();
+    const r=await fetch(url);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const text=await r.text();
+    el.innerHTML=mdToHtml(text);
+  }catch(e){
+    el.innerHTML='<div class="error-box">読み込み失敗: '+e.message+'</div>';
+  }
+}
+function selectReportTeam(team,btn){
+  currentReportTeam=team;currentReportDate='';
+  document.querySelectorAll('.report-team-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.report-date-btn').forEach(b=>b.classList.remove('active'));
+  loadReport(team);
+}
+function loadDateReport(date,btn){
+  currentReportDate=date;
+  document.querySelectorAll('.report-date-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.report-team-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.report-team-btn').classList.add('active');
+  loadReport('daily/'+date+'_daily_report');
+}
 const SIM_URL="https://raw.githubusercontent.com/yangpinggaoye15-dotcom/invest-data/main/reports/simulation_log.json";
 let simLoaded=false;
 async function initSimPage(){
@@ -505,6 +603,19 @@ function renderSimPage(log){
         <div class="sim-row"><span class="sim-row-label">RS26w</span><span class="sim-row-val">${(a.rs_26w||0).toFixed(2)}</span></div>
         <div class="sim-progress"><div class="sim-progress-bar" style="width:${prog}%"></div></div>
         <div class="sim-days">${a.days_elapsed||0}/10日経過</div>
+        ${(()=>{
+          const h=a.next_hypothesis;
+          if(!h)return'';
+          const dc={'高':'#3fb950','中':'#f0b429','低':'#8b949e'}[h.confidence]||'#8b949e';
+          const dd={'上昇':'▲','下落':'▼','横ばい':'━'}[h.direction]||'?';
+          const dc2={'上昇':'#3fb950','下落':'#f85149','横ばい':'#8b949e'}[h.direction]||'#8b949e';
+          return `<div style="margin-top:8px;padding:8px;background:#0d1117;border-radius:6px;border-left:3px solid ${dc2}">
+            <div style="font-size:10px;color:#8b949e;margin-bottom:4px">翌日仮説 <span style="color:${dc};font-size:10px">(確信度:${h.confidence||'?'})</span></div>
+            <div style="font-size:13px;font-weight:600;color:${dc2}">${dd} ${h.direction||'?'}</div>
+            <div style="font-size:11px;color:#8b949e;margin-top:2px">${h.reason||''}</div>
+            ${h.key_level?`<div style="font-size:10px;color:#f0b429;margin-top:2px">注目: ${h.key_level}</div>`:''}
+          </div>`;
+        })()}
       </div>`;
     }).join('');
   }

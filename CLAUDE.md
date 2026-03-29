@@ -94,6 +94,36 @@ https://invest-system-six.vercel.app/
 
 ---
 
+## 責任分担マトリクス
+
+各オペレーションの担当チームを明示する。新機能追加時もこの表を更新すること。
+
+| オペレーション | 主担当 | 副担当（レビュー） | 出力先 |
+|--------------|--------|-----------------|--------|
+| 市場情報・ニュース収集 | Team 1 情報収集 | — | analysis.md への入力 |
+| テクニカル分析・パターン検出 | Team 2 分析 | — | strategy.md への入力 |
+| ファンダメンタル分析 | Team 2 分析 | — | strategy.md への入力 |
+| **シミュレーション候補選定** | **Team 2 分析（テクニカル担当）** | Team 4 投資戦略 | simulation_log.json |
+| **翌日仮説立案** | **Team 2 分析（テクニカル担当）** | — | simulation_log.json[next_hypothesis] |
+| ポジションサイジング・損切り設計 | Team 3 リスク管理 | Team 4 投資戦略 | strategy.md |
+| 市場フェーズ判定（detect_phase） | Team 4 投資戦略 | — | strategy.md |
+| エントリー戦略・エグジット設計 | Team 4 投資戦略 | Team 3 リスク管理 | strategy.md |
+| 全チームKPI評価・改善提案 | Team 5 内部監査 | — | internal_audit.md |
+| コード監査・セキュリティチェック | Team 6 セキュリティ | — | security.md |
+| 日次統合レポート生成 | Team 7 レポート統括 | — | latest_report.md |
+| **シミュレーション日次追跡** | **Team 8 検証** | — | simulation_log.json |
+| **仮説 vs 実勢 差異分析** | **Team 8 検証** | Team 2 分析 | verification.md |
+| KPIスコア記録（kpi_log.json） | Team 8 検証 | Team 5 内部監査 | kpi_log.json |
+| シミュレーション結果フィードバック | Team 8 検証 → Team 2/4 | — | verification.md |
+
+### 追加専門家の基準
+- 既存8チームで対応できない専門領域が発生した場合のみ追加を検討
+- 現状の追加候補（発動条件）:
+  - **マクロ経済スペシャリスト**: 地政学リスクが月3回以上市場影響した場合 → Team 1に統合
+  - **オプション戦略担当**: ヘッジ需要が発生した場合（Phase 2以降）
+
+---
+
 ## 投資チーム構成
 
 ### 組織図（8チーム）
@@ -190,10 +220,13 @@ https://invest-system-six.vercel.app/
   "history": [...]
 }
 ```
-- **最大3銘柄同時追跡**（`MAX_SIM_SLOTS = 3`）
+- **最大5銘柄同時追跡**（`MAX_SIM_SLOTS = 5`）
+- **担当**: Team 8 検証（追跡） / Team 2 分析（候補選定・仮説立案）
 - `run_verification()` (Team 8) が毎日自動更新
 - 終了後は即座に次の候補を選定（直近30日以内に追跡した銘柄を除外）
 - 旧フォーマット（`active`単体）から自動移行
+- **翌日仮説**: `next_hypothesis` フィールドに方向・根拠・確信度・注目価格水準を記録
+- **差異分析**: 翌営業日に実勢と比較し `hypothesis_history` に蓄積（的中率KPI化）
 
 ### detect_phase() — 市場フェーズ自動判定
 ```python
@@ -221,9 +254,11 @@ https://invest-system-six.vercel.app/
 - **履歴テーブル**: 全追跡結果（結果バッジ: 損切り/目標①/期間終了）
 - データ元: `invest-data/reports/simulation_log.json`
 
-### レポートページ改善
-- **チームタブ**: 8チームを個別に閲覧可能（デフォルト: 統合レポート）
-- **日付ナビ**: 直近14日分のボタンで過去レポートに遷移
+### レポートタブ（`page-report`）
+- **チームタブ**: 統合/情報収集/分析/リスク/戦略/監査/セキュリティ/統括/検証の9タブ
+- **日付ナビ**: 直近14日分のボタンで日付別統合レポートに遷移
+- **Markdownレンダリング**: 見出し/テーブル/太字/`[事実]`/`[AI分析]`ラベルをHTML変換
+- データ元: `invest-data/reports/*.md` + `reports/daily/YYYY-MM-DD_daily_report.md`
 
 ### モバイル最適化（≤480px）
 - メトリクスグリッド: 4列→2列
