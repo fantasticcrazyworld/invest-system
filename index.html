@@ -114,7 +114,7 @@
   .chat-panel{width:100% !important;right:0 !important;bottom:0 !important;border-radius:16px 16px 0 0 !important}
   th,td{padding:6px 8px}
 }
-</style><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#f0b429"><script src="lightweight-charts.js"></script></head><body><div class="header"><div class="logo">MINERVINI TERMINAL <span>yohei</span></div><div class="updated" id="updated">読み込み中...</div></div><div class="nav"><button class="nav-btn active" onclick="showPage('screening',this)">スクリーニング</button><button class="nav-btn" onclick="showPage('chart',this)">チャート</button><button class="nav-btn" onclick="showPage('fins',this)">業績</button><button class="nav-btn" onclick="showPage('watchlist',this)">監視リスト</button><button class="nav-btn" onclick="showPage('portfolio',this)">ポートフォリオ</button><button class="nav-btn" onclick="showPage('health',this)">市況</button><button class="nav-btn" onclick="showPage('simulation',this)">シミュレーション</button><button class="nav-btn" onclick="showPage('report',this)">レポート</button></div><div class="page active" id="page-screening"><div class="metrics"><div class="metric"><div class="metric-label">対象銘柄</div><div class="metric-value muted" id="m-total">-</div></div><div class="metric"><div class="metric-label">PASS 6/7+</div><div class="metric-value green" id="m-pass">-</div></div><div class="metric"><div class="metric-label">満点 7/7</div><div class="metric-value gold" id="m-perfect">-</div></div><div class="metric"><div class="metric-label">高値更新圏</div><div class="metric-value gold" id="m-nearhigh">-</div></div></div><div class="filter-panel"><div class="search-box"><span style="color:#8b949e;font-size:14px">&#128269;</span><input type="text" id="search-input" placeholder="銘柄コード・銘柄名で検索..." oninput="applyFilters()"></div><div class="filter-row"><span class="filter-label">スコア</span><div class="slider-wrap"><input type="range" id="score-slider" min="1" max="7" value="6" step="1" oninput="updateLabel('score-slider','score-val',v=>v+'/7以上')"><span class="slider-val" id="score-val">6/7以上</span></div></div><div class="filter-row"><span class="filter-label">高値比</span><div class="slider-wrap"><input type="range" id="highpct-slider" min="70" max="100" value="90" step="1" oninput="updateLabel('highpct-slider','highpct-val',v=>v+'%以上')"><span class="slider-val" id="highpct-val">90%以上</span></div></div><div class="filter-row"><span class="filter-label">RS26w</span><div class="toggle-wrap"><div class="toggle" id="rs-toggle" onclick="toggleRS()"></div><span class="toggle-label" id="rs-label">全て表示</span></div></div><div class="filter-row"><span class="filter-label">並び順</span><div class="slider-wrap"><select id="sort-select" onchange="applyFilters()" style="background:#161b22;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:4px 8px;font-size:12px;flex:1"><option value="score">スコア順</option><option value="rs26w">RS26w強い順</option><option value="high_pct">高値比順</option><option value="price">株価順</option><option value="pattern">パターン優先</option></select></div></div><div class="custom-filter">
+</style><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#f0b429"><script src="lightweight-charts.js"></script></head><body><div class="header"><div class="logo">MINERVINI TERMINAL <span>yohei</span></div><div class="updated" id="updated">読み込み中...</div></div><div class="nav"><button class="nav-btn active" onclick="showPage('screening',this)">スクリーニング</button><button class="nav-btn" onclick="showPage('chart',this)">チャート</button><button class="nav-btn" onclick="showPage('fins',this)">業績</button><button class="nav-btn" onclick="showPage('watchlist',this)">監視リスト</button><button class="nav-btn" onclick="showPage('portfolio',this)">ポートフォリオ</button><button class="nav-btn" onclick="showPage('health',this)">市況</button><button class="nav-btn" onclick="showPage('simulation',this)">シミュレーション</button><button class="nav-btn" onclick="showPage('kpi',this)">KPI</button><button class="nav-btn" onclick="showPage('report',this)">レポート</button></div><div class="page active" id="page-screening"><div class="metrics"><div class="metric"><div class="metric-label">対象銘柄</div><div class="metric-value muted" id="m-total">-</div></div><div class="metric"><div class="metric-label">PASS 6/7+</div><div class="metric-value green" id="m-pass">-</div></div><div class="metric"><div class="metric-label">満点 7/7</div><div class="metric-value gold" id="m-perfect">-</div></div><div class="metric"><div class="metric-label">高値更新圏</div><div class="metric-value gold" id="m-nearhigh">-</div></div></div><div class="filter-panel"><div class="search-box"><span style="color:#8b949e;font-size:14px">&#128269;</span><input type="text" id="search-input" placeholder="銘柄コード・銘柄名で検索..." oninput="applyFilters()"></div><div class="filter-row"><span class="filter-label">スコア</span><div class="slider-wrap"><input type="range" id="score-slider" min="1" max="7" value="6" step="1" oninput="updateLabel('score-slider','score-val',v=>v+'/7以上')"><span class="slider-val" id="score-val">6/7以上</span></div></div><div class="filter-row"><span class="filter-label">高値比</span><div class="slider-wrap"><input type="range" id="highpct-slider" min="70" max="100" value="90" step="1" oninput="updateLabel('highpct-slider','highpct-val',v=>v+'%以上')"><span class="slider-val" id="highpct-val">90%以上</span></div></div><div class="filter-row"><span class="filter-label">RS26w</span><div class="toggle-wrap"><div class="toggle" id="rs-toggle" onclick="toggleRS()"></div><span class="toggle-label" id="rs-label">全て表示</span></div></div><div class="filter-row"><span class="filter-label">並び順</span><div class="slider-wrap"><select id="sort-select" onchange="applyFilters()" style="background:#161b22;border:1px solid #30363d;border-radius:6px;color:#e6edf3;padding:4px 8px;font-size:12px;flex:1"><option value="score">スコア順</option><option value="rs26w">RS26w強い順</option><option value="high_pct">高値比順</option><option value="price">株価順</option><option value="pattern">パターン優先</option></select></div></div><div class="custom-filter">
 <div class="custom-filter-row">
 <input class="custom-filter-input" id="custom-input" placeholder="例: rs26w > 0.5  /  high_pct > 0.97 && score == 7" oninput="applyFilters()">
 <button class="custom-filter-btn" onclick="savePreset()">保存</button>
@@ -254,25 +254,38 @@
 </div>
 <div class="page" id="page-simulation">
   <div class="section-header"><div class="section-title">シミュレーション追跡</div><div class="section-count" id="sim-count">読み込み中...</div></div>
-  <div id="sim-kpi-bar" style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:#30363d;border-bottom:1px solid #21262d">
-    <div style="background:#161b22;padding:10px 12px"><div style="font-size:10px;color:#8b949e;margin-bottom:3px">完了件数</div><div style="font-size:18px;font-weight:600;color:#e6edf3" id="kpi-total">-</div></div>
-    <div style="background:#161b22;padding:10px 12px"><div style="font-size:10px;color:#8b949e;margin-bottom:3px">勝率</div><div style="font-size:18px;font-weight:600" id="kpi-winrate">-</div></div>
-    <div style="background:#161b22;padding:10px 12px"><div style="font-size:10px;color:#8b949e;margin-bottom:3px">仮説的中率</div><div style="font-size:18px;font-weight:600" id="kpi-hyprate">-</div></div>
-    <div style="background:#161b22;padding:10px 12px"><div style="font-size:10px;color:#8b949e;margin-bottom:3px">平均利益</div><div style="font-size:18px;font-weight:600;color:#3fb950" id="kpi-avgwin">-</div></div>
-    <div style="background:#161b22;padding:10px 12px"><div style="font-size:10px;color:#8b949e;margin-bottom:3px">平均損失</div><div style="font-size:18px;font-weight:600;color:#f85149" id="kpi-avgloss">-</div></div>
-  </div>
-  <div style="padding:6px 14px;font-size:10px;color:#8b949e;border-bottom:1px solid #21262d;display:flex;gap:16px">
-    <span>候補選定・仮説: <span style="color:#f0b429">銘柄選定・仮説チーム</span></span>
-    <span>追跡・差異分析: <span style="color:#f0b429">シミュレーション追跡・検証チーム</span></span>
-  </div>
-  <div id="sim-active-grid" class="sim-grid"><div class="sim-empty">データを読み込み中...</div></div>
-  <div class="section-header" style="margin-top:8px"><div class="section-title">追跡履歴</div><div class="section-count" id="sim-hist-count"></div></div>
+  <div id="sim-cards-wrap" style="padding:12px 14px;display:flex;flex-direction:column;gap:16px"><div class="sim-empty">データを読み込み中...</div></div>
+  <div class="section-header" style="margin-top:4px"><div class="section-title">追跡履歴</div><div class="section-count" id="sim-hist-count"></div></div>
   <div class="sim-hist-wrap table-wrap">
-    <table id="sim-hist-table">
-      <thead><tr>
-        <th>銘柄</th><th>コード</th><th class="r">EP</th><th class="r">終了値</th><th class="r">損益%</th><th>結果</th><th>日数</th><th>開始日</th>
-      </tr></thead>
-      <tbody id="sim-hist-body"><tr><td colspan="8" style="text-align:center;color:#8b949e;padding:20px">-</td></tr></tbody>
+    <table><thead><tr>
+      <th>銘柄</th><th>コード</th><th class="r">EP</th><th class="r">終了値</th><th class="r">損益%</th><th>結果</th><th>日数</th><th>開始日</th>
+    </tr></thead>
+    <tbody id="sim-hist-body"><tr><td colspan="8" style="text-align:center;color:#8b949e;padding:20px">-</td></tr></tbody>
+    </table>
+  </div>
+</div>
+<div class="page" id="page-kpi">
+  <div class="section-header"><div class="section-title">シミュレーション KPI</div><div class="section-count" id="kpi-updated"></div></div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:#30363d">
+    <div style="background:#161b22;padding:12px 14px"><div style="font-size:10px;color:#8b949e;margin-bottom:4px">完了件数</div><div style="font-size:22px;font-weight:600;color:#e6edf3" id="kpi-total">-</div></div>
+    <div style="background:#161b22;padding:12px 14px"><div style="font-size:10px;color:#8b949e;margin-bottom:4px">勝率</div><div style="font-size:22px;font-weight:600" id="kpi-winrate">-</div><div style="font-size:10px;color:#8b949e">目標 50%</div></div>
+    <div style="background:#161b22;padding:12px 14px"><div style="font-size:10px;color:#8b949e;margin-bottom:4px">仮説的中率</div><div style="font-size:22px;font-weight:600" id="kpi-hyprate">-</div><div style="font-size:10px;color:#8b949e">目標 55%</div></div>
+    <div style="background:#161b22;padding:12px 14px"><div style="font-size:10px;color:#8b949e;margin-bottom:4px">平均利益</div><div style="font-size:22px;font-weight:600;color:#3fb950" id="kpi-avgwin">-</div><div style="font-size:10px;color:#8b949e">目標 +25%</div></div>
+    <div style="background:#161b22;padding:12px 14px"><div style="font-size:10px;color:#8b949e;margin-bottom:4px">平均損失</div><div style="font-size:22px;font-weight:600;color:#f85149" id="kpi-avgloss">-</div><div style="font-size:10px;color:#8b949e">目標 -8%以内</div></div>
+  </div>
+  <div style="padding:10px 14px;font-size:11px;color:#8b949e;border-bottom:1px solid #21262d;display:flex;gap:20px;flex-wrap:wrap">
+    <span>損切り: <strong style="color:#f85149">-8%</strong></span>
+    <span>目標①: <strong style="color:#3fb950">+25%</strong></span>
+    <span>RR比: <strong style="color:#f0b429">3.1倍</strong></span>
+    <span>追跡期間: <strong style="color:#e6edf3">10営業日</strong></span>
+    <span>同時追跡: <strong style="color:#e6edf3">最大5銘柄</strong></span>
+  </div>
+  <div class="section-header" style="margin-top:8px"><div class="section-title">全追跡履歴</div><div class="section-count" id="kpi-hist-count"></div></div>
+  <div class="sim-hist-wrap table-wrap">
+    <table><thead><tr>
+      <th>銘柄</th><th>コード</th><th class="r">EP</th><th class="r">終了値</th><th class="r">損益%</th><th>結果</th><th>仮説的中</th><th>日数</th><th>開始日</th>
+    </tr></thead>
+    <tbody id="kpi-hist-body"><tr><td colspan="9" style="text-align:center;color:#8b949e;padding:20px">-</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -505,7 +518,7 @@ async function sendChat(){
     if(sendBtn) sendBtn.disabled=false;
   }
 }
-function closeDetail(){document.getElementById("detail-panel").classList.remove("open");document.getElementById("overlay").classList.remove("show");}function showPage(n,btn){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));document.getElementById("page-"+n).classList.add("active");btn.classList.add("active");if(n==='simulation')initSimPage();if(n==='report')initReportPage();}
+function closeDetail(){document.getElementById("detail-panel").classList.remove("open");document.getElementById("overlay").classList.remove("show");}function showPage(n,btn){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));document.getElementById("page-"+n).classList.add("active");btn.classList.add("active");if(n==='simulation')initSimPage();if(n==='kpi')initKpiPage();if(n==='report')initReportPage();}
 const REPORT_BASE="https://raw.githubusercontent.com/yangpinggaoye15-dotcom/invest-data/main/reports/";
 let currentReportTeam='latest_report',currentReportDate='',reportPageInited=false;
 function mdToHtml(md){
@@ -580,17 +593,33 @@ function loadDateReport(date,btn){
   }
 }
 const SIM_URL="https://raw.githubusercontent.com/yangpinggaoye15-dotcom/invest-data/main/reports/simulation_log.json";
-let simLoaded=false;
+let simLoaded=false,simLog=null;
+async function loadSimLog(){
+  if(simLog)return simLog;
+  const r=await fetch(SIM_URL+"?t="+Date.now());
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  simLog=await r.json();
+  return simLog;
+}
 async function initSimPage(){
   if(simLoaded)return;
   simLoaded=true;
   try{
-    const r=await fetch(SIM_URL+"?t="+Date.now());
-    if(!r.ok)throw new Error("HTTP "+r.status);
-    const log=await r.json();
+    const log=await loadSimLog();
     renderSimPage(log);
   }catch(e){
-    document.getElementById("sim-active-grid").innerHTML='<div class="sim-empty">読み込み失敗: '+e.message+'</div>';
+    document.getElementById("sim-cards-wrap").innerHTML='<div class="sim-empty">読み込み失敗: '+e.message+'</div>';
+  }
+}
+let kpiLoaded=false;
+async function initKpiPage(){
+  if(kpiLoaded)return;
+  kpiLoaded=true;
+  try{
+    const log=await loadSimLog();
+    renderKpiPage(log);
+  }catch(e){
+    document.getElementById("kpi-hist-body").innerHTML='<tr><td colspan="9" style="text-align:center;color:#f85149;padding:20px">読み込み失敗: '+e.message+'</td></tr>';
   }
 }
 function normalizeSim(s){
@@ -611,95 +640,124 @@ function normalizeSim(s){
     start_date: s.start_date||s.entry_date||''
   };
 }
+function getSimHistory(log){
+  const raw=log.history||(log.simulations?log.simulations.filter(s=>s.result||s.actual_result):[])||[];
+  return raw.map(normalizeSim).slice().reverse();
+}
+function getSimActives(log){
+  const raw=log.actives||(log.simulations?log.simulations.filter(s=>!s.result&&!s.actual_result):null)||(log.active?[log.active]:[]);
+  return (raw||[]).map(normalizeSim);
+}
 function renderSimPage(log){
-  // actives / simulations(旧) / active(単体旧) の全フォーマット対応
-  const rawActives=log.actives||(log.simulations?log.simulations.filter(s=>!s.result&&!s.actual_result):null)||(log.active?[log.active]:[]);
-  const actives=(rawActives||[]).map(normalizeSim);
-  const grid=document.getElementById("sim-active-grid");
+  const actives=getSimActives(log);
+  const history=getSimHistory(log);
   document.getElementById("sim-count").textContent=actives.length+"件追跡中";
-  // KPIバー計算
-  const rawHistory2=log.history||(log.simulations?log.simulations.filter(s=>s.result||s.actual_result):[])||[];
-  const histNorm=rawHistory2.map(normalizeSim);
-  const completed=histNorm.filter(h=>h.result);
-  const wins=completed.filter(h=>(h.result_pct||0)>0);
-  const losses=completed.filter(h=>(h.result_pct||0)<=0);
-  const avgWin=wins.length?wins.reduce((s,h)=>s+(h.result_pct||0),0)/wins.length:null;
-  const avgLoss=losses.length?losses.reduce((s,h)=>s+(h.result_pct||0),0)/losses.length:null;
-  const winRate=completed.length?wins.length/completed.length*100:null;
-  const allHyp=[...actives,...histNorm].flatMap(a=>a.hypothesis_history||[]);
-  const hypHits=allHyp.filter(h=>h.match).length;
-  const hypRate=allHyp.length?hypHits/allHyp.length*100:null;
-  const fmtPct=(v,good)=>v===null?'-':`<span style="color:${v>=good?'#3fb950':'#f85149'}">${v.toFixed(1)}%</span>`;
-  document.getElementById('kpi-total').textContent=completed.length+'件';
-  document.getElementById('kpi-winrate').innerHTML=fmtPct(winRate,50);
-  document.getElementById('kpi-hyprate').innerHTML=fmtPct(hypRate,55);
-  document.getElementById('kpi-avgwin').textContent=avgWin!==null?`+${avgWin.toFixed(1)}%`:'-';
-  document.getElementById('kpi-avgloss').textContent=avgLoss!==null?`${avgLoss.toFixed(1)}%`:'-';
-  if(actives.length===0){
-    grid.innerHTML='<div class="sim-empty">現在追跡中の銘柄はありません</div>';
-  }else{
-    grid.innerHTML=actives.map(a=>{
+  const wrap=document.getElementById("sim-cards-wrap");
+  const dirIcon={'上昇':'▲','下落':'▼','横ばい':'━'};
+  const dirColor={'上昇':'#3fb950','下落':'#f85149','横ばい':'#8b949e'};
+  const confColor={'高':'#3fb950','中':'#f0b429','低':'#8b949e'};
+  const resultLabel={stopped_out:'損切り',target1_hit:'目標①',time_expired:'期間終了'};
+  const resultCls={stopped_out:'loss',target1_hit:'win',time_expired:'time'};
+  if(actives.length===0){wrap.innerHTML='<div class="sim-empty">現在追跡中の銘柄はありません</div>';}
+  else{
+    wrap.innerHTML=actives.map(a=>{
       const pct=a.current_pct||0;
-      const cls=pct>0?'pos':pct<0?'neg':'neu';
-      const prog=Math.min(100,((a.days_elapsed||0)/10)*100);
+      const pctCls=pct>0?'pos':pct<0?'neg':'neu';
       const ep=a.entry_price||0;
       const sl=a.stop_loss||0;
       const t1=a.target1||0;
-      const risk=ep>0?((sl-ep)/ep*100).toFixed(1):'';
-      const reward=ep>0?((t1-ep)/ep*100).toFixed(1):'';
-      return `<div class="sim-card">
-        <div class="sim-card-header">
-          <div><div class="sim-name">${a.name||'-'}</div><div class="sim-code">${a.code||'-'}</div></div>
-          <div class="sim-pct ${cls}">${pct>=0?'+':''}${pct.toFixed(2)}%</div>
+      const prog=Math.min(100,((a.days_elapsed||0)/10)*100);
+      // ① 対象銘柄
+      const s1=`<div style="margin-bottom:10px">
+        <div style="font-size:10px;color:#f0b429;font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px">① 対象銘柄 <span style="color:#8b949e;font-weight:400;font-size:10px">銘柄選定・仮説チーム</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div><div style="font-size:15px;font-weight:700;color:#e6edf3">${a.name||'-'}</div><div style="font-size:11px;color:#8b949e;font-family:monospace">${a.code||'-'} / RS26w ${(a.rs_26w||0).toFixed(2)}</div></div>
+          <div class="sim-pct ${pctCls}" style="font-size:20px">${pct>=0?'+':''}${pct.toFixed(2)}%</div>
         </div>
-        <div class="sim-row"><span class="sim-row-label">エントリー</span><span class="sim-row-val">${ep.toLocaleString()}円</span></div>
-        <div class="sim-row"><span class="sim-row-label">現在値</span><span class="sim-row-val">${(a.current_price||0).toLocaleString()}円</span></div>
-        <div class="sim-row"><span class="sim-row-label">損切り</span><span class="sim-row-val" style="color:#f85149">${sl.toLocaleString()}円 (${risk}%)</span></div>
-        <div class="sim-row"><span class="sim-row-label">目標①</span><span class="sim-row-val" style="color:#3fb950">${t1.toLocaleString()}円 (+${reward}%)</span></div>
-        <div class="sim-row"><span class="sim-row-label">RS26w</span><span class="sim-row-val">${(a.rs_26w||0).toFixed(2)}</span></div>
-        <div class="sim-progress"><div class="sim-progress-bar" style="width:${prog}%"></div></div>
-        <div class="sim-days">${a.days_elapsed||0}/10日経過</div>
-        ${(()=>{
-          const h=a.next_hypothesis;
-          if(!h)return'';
-          const dc={'高':'#3fb950','中':'#f0b429','低':'#8b949e'}[h.confidence]||'#8b949e';
-          const dd={'上昇':'▲','下落':'▼','横ばい':'━'}[h.direction]||'?';
-          const dc2={'上昇':'#3fb950','下落':'#f85149','横ばい':'#8b949e'}[h.direction]||'#8b949e';
-          return `<div style="margin-top:8px;padding:8px;background:#0d1117;border-radius:6px;border-left:3px solid ${dc2}">
-            <div style="font-size:10px;color:#8b949e;margin-bottom:4px">翌日仮説 <span style="color:${dc};font-size:10px">(確信度:${h.confidence||'?'})</span></div>
-            <div style="font-size:13px;font-weight:600;color:${dc2}">${dd} ${h.direction||'?'}</div>
-            <div style="font-size:11px;color:#8b949e;margin-top:2px">${h.reason||''}</div>
-            ${h.key_level?`<div style="font-size:10px;color:#f0b429;margin-top:2px">注目: ${h.key_level}</div>`:''}
-          </div>`;
-        })()}
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">
+          <div style="background:#0d1117;border-radius:6px;padding:6px 8px"><div style="font-size:10px;color:#8b949e">エントリー</div><div style="font-size:13px;font-family:monospace">${ep.toLocaleString()}円</div></div>
+          <div style="background:#0d1117;border-radius:6px;padding:6px 8px"><div style="font-size:10px;color:#8b949e">現在値</div><div style="font-size:13px;font-family:monospace">${(a.current_price||0).toLocaleString()}円</div></div>
+          <div style="background:#0d1117;border-radius:6px;padding:6px 8px"><div style="font-size:10px;color:#8b949e">経過</div><div style="font-size:13px">${a.days_elapsed||0}/10日</div></div>
+          <div style="background:#0d1117;border-radius:6px;padding:6px 8px"><div style="font-size:10px;color:#f85149">損切り</div><div style="font-size:13px;font-family:monospace;color:#f85149">${sl.toLocaleString()}円</div></div>
+          <div style="background:#0d1117;border-radius:6px;padding:6px 8px"><div style="font-size:10px;color:#3fb950">目標①</div><div style="font-size:13px;font-family:monospace;color:#3fb950">${t1.toLocaleString()}円</div></div>
+          <div style="background:#0d1117;border-radius:6px;padding:6px 8px"><div style="font-size:10px;color:#8b949e">開始日</div><div style="font-size:12px">${a.start_date||'-'}</div></div>
+        </div>
+        <div class="sim-progress" style="margin-top:8px"><div class="sim-progress-bar" style="width:${prog}%"></div></div>
       </div>`;
+      // ② 仮説内容
+      const h=a.next_hypothesis;
+      const s2=h?`<div style="margin-bottom:10px;padding:10px;background:#0d1117;border-radius:8px;border-left:3px solid ${dirColor[h.direction]||'#30363d'}">
+        <div style="font-size:10px;color:#f0b429;font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px">② 翌日仮説 <span style="color:#8b949e;font-weight:400">銘柄選定・仮説チーム</span></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:16px;font-weight:700;color:${dirColor[h.direction]||'#e6edf3'}">${dirIcon[h.direction]||'?'} ${h.direction||'?'}</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:4px;background:#21262d;color:${confColor[h.confidence]||'#8b949e'}">確信度: ${h.confidence||'?'}</span>
+        </div>
+        <div style="font-size:12px;color:#c9d1d9;line-height:1.5">${h.reason||''}</div>
+        ${h.key_level?`<div style="font-size:11px;color:#f0b429;margin-top:4px">注目水準: ${h.key_level}</div>`:''}
+      </div>`:`<div style="margin-bottom:10px;padding:10px;background:#0d1117;border-radius:8px;border-left:3px solid #30363d">
+        <div style="font-size:10px;color:#f0b429;font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">② 翌日仮説</div>
+        <div style="font-size:12px;color:#8b949e">仮説未生成（次回の平日に生成されます）</div>
+      </div>`;
+      // ③ 実際の動き + ④ 差異分析
+      const hyph=a.hypothesis_history||[];
+      const latest=hyph.length?hyph[hyph.length-1]:null;
+      const s34=latest?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="padding:10px;background:#0d1117;border-radius:8px;border-left:3px solid ${dirColor[latest.actual_direction]||'#30363d'}">
+          <div style="font-size:10px;color:#f0b429;font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px">③ 実際の動き</div>
+          <div style="font-size:16px;font-weight:700;color:${dirColor[latest.actual_direction]||'#e6edf3'}">${dirIcon[latest.actual_direction]||'?'} ${latest.actual_direction||'?'}</div>
+          <div style="font-size:13px;font-family:monospace;margin-top:4px;color:${(latest.price_change_pct||0)>=0?'#3fb950':'#f85149'}">${(latest.price_change_pct||0)>=0?'+':''}${(latest.price_change_pct||0).toFixed(2)}%</div>
+          <div style="font-size:10px;color:#8b949e;margin-top:2px">${latest.prev_price?.toLocaleString()||'-'} → ${latest.actual_price?.toLocaleString()||'-'}円</div>
+          <div style="font-size:10px;color:#8b949e;margin-top:2px">${latest.date||''}</div>
+        </div>
+        <div style="padding:10px;background:#0d1117;border-radius:8px;border-left:3px solid ${latest.match?'#3fb950':'#f85149'}">
+          <div style="font-size:10px;color:#f0b429;font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px">④ 差異分析 <span style="color:#8b949e;font-weight:400">追跡・検証チーム</span></div>
+          <div style="font-size:18px;font-weight:700;color:${latest.match?'#3fb950':'#f85149'}">${latest.match?'○ 的中':'× 外れ'}</div>
+          <div style="font-size:11px;color:#8b949e;margin-top:4px">予測: ${latest.direction||'?'} / 実際: ${latest.actual_direction||'?'}</div>
+          ${hyph.length>1?`<div style="font-size:10px;color:#8b949e;margin-top:4px">直近${Math.min(hyph.length,5)}回的中率: ${Math.round(hyph.slice(-5).filter(x=>x.match).length/Math.min(hyph.length,5)*100)}%</div>`:''}
+        </div>
+      </div>`:`<div style="padding:10px;background:#0d1117;border-radius:8px;border-left:3px solid #30363d">
+        <div style="font-size:10px;color:#f0b429;font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">③④ 実際の動き・差異分析</div>
+        <div style="font-size:12px;color:#8b949e">翌日結果待ち（仮説生成後の翌営業日に更新）</div>
+      </div>`;
+      return `<div class="sim-card">${s1}${s2}${s34}</div>`;
     }).join('');
   }
-  // 履歴テーブル（旧simulations配列の完了分も含む）
-  const rawHistory=log.history||(log.simulations?log.simulations.filter(s=>s.result||s.actual_result):[])||[];
-  const history=rawHistory.map(normalizeSim).slice().reverse();
+  // 履歴（簡易表）
   document.getElementById("sim-hist-count").textContent=history.length+"件";
   const tbody=document.getElementById("sim-hist-body");
-  if(history.length===0){
-    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#8b949e;padding:20px">履歴なし</td></tr>';
-    return;
-  }
+  if(history.length===0){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#8b949e;padding:20px">履歴なし</td></tr>';return;}
+  tbody.innerHTML=history.map(h=>{
+    const pct=h.result_pct||0;const cls=pct>0?'pos':pct<0?'neg':'neu';const res=h.result||'-';
+    return `<tr><td class="name">${h.name||'-'}</td><td class="code">${h.code||'-'}</td><td class="r">${(h.entry_price||0).toLocaleString()}</td><td class="r">${(h.current_price||h.entry_price||0).toLocaleString()}</td><td class="r ${cls}" style="font-family:monospace">${pct>=0?'+':''}${pct.toFixed(1)}%</td><td><span class="sim-result-badge ${resultCls[res]||''}">${resultLabel[res]||res}</span></td><td style="color:#8b949e">${h.days_elapsed||0}日</td><td style="color:#8b949e">${h.start_date||'-'}</td></tr>`;
+  }).join('');
+}
+function renderKpiPage(log){
+  const actives=getSimActives(log);
+  const history=getSimHistory(log);
+  const completed=history.filter(h=>h.result);
+  const wins=completed.filter(h=>(h.result_pct||0)>0);
+  const losses=completed.filter(h=>(h.result_pct||0)<=0);
+  const winRate=completed.length?wins.length/completed.length*100:null;
+  const avgWin=wins.length?wins.reduce((s,h)=>s+(h.result_pct||0),0)/wins.length:null;
+  const avgLoss=losses.length?losses.reduce((s,h)=>s+(h.result_pct||0),0)/losses.length:null;
+  const allHyp=[...actives,...history].flatMap(a=>a.hypothesis_history||[]);
+  const hypRate=allHyp.length?allHyp.filter(h=>h.match).length/allHyp.length*100:null;
+  const fmt=(v,good,pfx='',sfx='%')=>v===null?'-':`<span style="color:${v>=good?'#3fb950':'#f85149'}">${pfx}${v.toFixed(1)}${sfx}</span>`;
+  document.getElementById('kpi-total').textContent=completed.length+'件';
+  document.getElementById('kpi-winrate').innerHTML=fmt(winRate,50);
+  document.getElementById('kpi-hyprate').innerHTML=fmt(hypRate,55);
+  document.getElementById('kpi-avgwin').innerHTML=avgWin!==null?`<span style="color:#3fb950">+${avgWin.toFixed(1)}%</span>`:'-';
+  document.getElementById('kpi-avgloss').innerHTML=avgLoss!==null?`<span style="color:${avgLoss>=-8?'#3fb950':'#f85149'}">${avgLoss.toFixed(1)}%</span>`:'-';
+  document.getElementById('kpi-updated').textContent='更新: '+(log.last_updated||'-');
   const resultLabel={stopped_out:'損切り',target1_hit:'目標①',time_expired:'期間終了'};
   const resultCls={stopped_out:'loss',target1_hit:'win',time_expired:'time'};
-  tbody.innerHTML=history.map(h=>{
-    const pct=h.result_pct||0;
-    const cls=pct>0?'pos':pct<0?'neg':'neu';
-    const res=h.result||'-';
-    return `<tr>
-      <td class="name">${h.name||'-'}</td>
-      <td class="code">${h.code||'-'}</td>
-      <td class="r">${(h.entry_price||0).toLocaleString()}</td>
-      <td class="r">${(h.current_price||h.entry_price||0).toLocaleString()}</td>
-      <td class="r ${cls}" style="font-family:monospace">${pct>=0?'+':''}${pct.toFixed(1)}%</td>
-      <td><span class="sim-result-badge ${resultCls[res]||''}">${resultLabel[res]||res}</span></td>
-      <td style="color:#8b949e">${h.days_elapsed||0}日</td>
-      <td style="color:#8b949e">${h.start_date||'-'}</td>
-    </tr>`;
+  document.getElementById('kpi-hist-count').textContent=completed.length+'件';
+  const tbody=document.getElementById('kpi-hist-body');
+  if(completed.length===0){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:#8b949e;padding:20px">履歴なし</td></tr>';return;}
+  tbody.innerHTML=completed.map(h=>{
+    const pct=h.result_pct||0;const cls=pct>0?'pos':pct<0?'neg':'neu';const res=h.result||'-';
+    const hh=h.hypothesis_history||[];const hRate=hh.length?Math.round(hh.filter(x=>x.match).length/hh.length*100):null;
+    return `<tr><td class="name">${h.name||'-'}</td><td class="code">${h.code||'-'}</td><td class="r">${(h.entry_price||0).toLocaleString()}</td><td class="r">${(h.current_price||h.entry_price||0).toLocaleString()}</td><td class="r ${cls}" style="font-family:monospace">${pct>=0?'+':''}${pct.toFixed(1)}%</td><td><span class="sim-result-badge ${resultCls[res]||''}">${resultLabel[res]||res}</span></td><td style="color:${hRate===null?'#8b949e':hRate>=55?'#3fb950':'#f85149'}">${hRate===null?'-':hRate+'%'}</td><td style="color:#8b949e">${h.days_elapsed||0}日</td><td style="color:#8b949e">${h.start_date||'-'}</td></tr>`;
   }).join('');
 }
 var lwChart=null,candleSeries=null,volumeSeries=null,sma50Series=null,sma150Series=null,sma200Series=null;
