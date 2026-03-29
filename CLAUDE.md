@@ -71,13 +71,13 @@ https://invest-system-six.vercel.app/
 | ファイル | チーム |
 |---------|------|
 | `info_gathering.md` | 情報収集チーム（Team 1） |
-| `analysis.md` | 分析チーム（Team 2） |
+| `analysis.md` | 銘柄選定・仮説チーム（Team 2） |
 | `risk.md` | リスク管理チーム（Team 3） |
 | `strategy.md` | 投資戦略チーム（Team 4） |
 | `internal_audit.md` | 内部監査チーム（Team 5） |
 | `security.md` | セキュリティチーム（Team 6） |
 | `report.md` | レポート統括（Team 7） |
-| `verification.md` | 検証チーム（Team 8） |
+| `verification.md` | シミュレーション追跡・検証チーム（Team 8） |
 | `YYYY-MM-DD_daily_report.md` | 日付付き統合レポート |
 | `latest_report.md` | 最新版（サイト表示用） |
 | `source_log.md` | 情報源・信頼度ログ（レポートには非掲載） |
@@ -101,20 +101,20 @@ https://invest-system-six.vercel.app/
 | オペレーション | 主担当 | 副担当（レビュー） | 出力先 |
 |--------------|--------|-----------------|--------|
 | 市場情報・ニュース収集 | Team 1 情報収集 | — | analysis.md への入力 |
-| テクニカル分析・パターン検出 | Team 2 分析 | — | strategy.md への入力 |
-| ファンダメンタル分析 | Team 2 分析 | — | strategy.md への入力 |
-| **シミュレーション候補選定** | **Team 2 分析（テクニカル担当）** | Team 4 投資戦略 | simulation_log.json |
-| **翌日仮説立案** | **Team 2 分析（テクニカル担当）** | — | simulation_log.json[next_hypothesis] |
+| テクニカル分析・パターン検出 | Team 2 銘柄選定・仮説チーム | — | strategy.md への入力 |
+| ファンダメンタル分析 | Team 2 銘柄選定・仮説チーム | — | strategy.md への入力 |
+| **シミュレーション候補選定** | **Team 2 銘柄選定・仮説（テクニカル担当）** | Team 4 投資戦略 | simulation_log.json |
+| **翌日仮説立案** | **Team 2 銘柄選定・仮説（テクニカル担当）** | — | simulation_log.json[next_hypothesis] |
 | ポジションサイジング・損切り設計 | Team 3 リスク管理 | Team 4 投資戦略 | strategy.md |
 | 市場フェーズ判定（detect_phase） | Team 4 投資戦略 | — | strategy.md |
 | エントリー戦略・エグジット設計 | Team 4 投資戦略 | Team 3 リスク管理 | strategy.md |
 | 全チームKPI評価・改善提案 | Team 5 内部監査 | — | internal_audit.md |
 | コード監査・セキュリティチェック | Team 6 セキュリティ | — | security.md |
 | 日次統合レポート生成 | Team 7 レポート統括 | — | latest_report.md |
-| **シミュレーション日次追跡** | **Team 8 検証** | — | simulation_log.json |
-| **仮説 vs 実勢 差異分析** | **Team 8 検証** | Team 2 分析 | verification.md |
-| KPIスコア記録（kpi_log.json） | Team 8 検証 | Team 5 内部監査 | kpi_log.json |
-| シミュレーション結果フィードバック | Team 8 検証 → Team 2/4 | — | verification.md |
+| **シミュレーション日次追跡** | **Team 8 シミュレーション追跡・検証チーム** | — | simulation_log.json |
+| **仮説 vs 実勢 差異分析** | **Team 8 シミュレーション追跡・検証チーム** | Team 2 銘柄選定・仮説チーム | verification.md |
+| KPIスコア記録（kpi_log.json） | Team 8 シミュレーション追跡・検証チーム | Team 5 内部監査 | kpi_log.json |
+| シミュレーション結果フィードバック | Team 8 シミュレーション追跡・検証チーム → Team 2/4 | — | verification.md |
 
 ### 追加専門家の基準
 - 既存8チームで対応できない専門領域が発生した場合のみ追加を検討
@@ -131,20 +131,20 @@ https://invest-system-six.vercel.app/
 オーナー（最終意思決定）
   └── 統括マネージャー（意思決定以外すべて）
         ├── 情報収集チーム（米国市場担当 / 日本市場担当 / マクロ地政学担当）
-        ├── 分析チーム（テクニカル担当 / ファンダメンタル担当 / パターン検出担当）
+        ├── 銘柄選定・仮説チーム（テクニカル担当 / ファンダメンタル担当 / パターン検出担当）
         ├── リスク管理チーム（ポジション管理担当 / 市場リスク担当 / DD管理担当）
         ├── 投資戦略チーム（市場フェーズ判定担当 / エントリー設計担当 / エグジット戦略担当）
         ├── 内部監査チーム（全チームKPI評価 / 改善提案）
         ├── セキュリティチーム（コード監査 / 脅威情報収集）
         ├── レポート統括（日次統合レポート生成）
-        └── 検証チーム（シミュレーション自動追跡 / 差異分析 / KPIフィードバック）
+        └── シミュレーション追跡・検証チーム（シミュレーション自動追跡 / 差異分析 / KPIフィードバック）
 ```
 
 ### 情報伝達フロー
 ```
 情報収集 → 分析 → リスク管理 → 投資戦略 → レポート統括
   ↑                                              ↓
-  └─────────────── 検証チームフィードバック ←────┘
+  └─────────────── シミュレーション追跡・検証チームフィードバック ←────┘
                    内部監査 → 全チームへ
 ```
 
@@ -221,7 +221,7 @@ https://invest-system-six.vercel.app/
 }
 ```
 - **最大5銘柄同時追跡**（`MAX_SIM_SLOTS = 5`）
-- **担当**: Team 8 検証（追跡） / Team 2 分析（候補選定・仮説立案）
+- **担当**: Team 8 シミュレーション追跡・検証チーム（追跡） / Team 2 銘柄選定・仮説チーム（候補選定・仮説立案）
 - `run_verification()` (Team 8) が毎日自動更新
 - 終了後は即座に次の候補を選定（直近30日以内に追跡した銘柄を除外）
 - 旧フォーマット（`active`単体）から自動移行

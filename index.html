@@ -254,6 +254,17 @@
 </div>
 <div class="page" id="page-simulation">
   <div class="section-header"><div class="section-title">シミュレーション追跡</div><div class="section-count" id="sim-count">読み込み中...</div></div>
+  <div id="sim-kpi-bar" style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:#30363d;border-bottom:1px solid #21262d">
+    <div style="background:#161b22;padding:10px 12px"><div style="font-size:10px;color:#8b949e;margin-bottom:3px">完了件数</div><div style="font-size:18px;font-weight:600;color:#e6edf3" id="kpi-total">-</div></div>
+    <div style="background:#161b22;padding:10px 12px"><div style="font-size:10px;color:#8b949e;margin-bottom:3px">勝率</div><div style="font-size:18px;font-weight:600" id="kpi-winrate">-</div></div>
+    <div style="background:#161b22;padding:10px 12px"><div style="font-size:10px;color:#8b949e;margin-bottom:3px">仮説的中率</div><div style="font-size:18px;font-weight:600" id="kpi-hyprate">-</div></div>
+    <div style="background:#161b22;padding:10px 12px"><div style="font-size:10px;color:#8b949e;margin-bottom:3px">平均利益</div><div style="font-size:18px;font-weight:600;color:#3fb950" id="kpi-avgwin">-</div></div>
+    <div style="background:#161b22;padding:10px 12px"><div style="font-size:10px;color:#8b949e;margin-bottom:3px">平均損失</div><div style="font-size:18px;font-weight:600;color:#f85149" id="kpi-avgloss">-</div></div>
+  </div>
+  <div style="padding:6px 14px;font-size:10px;color:#8b949e;border-bottom:1px solid #21262d;display:flex;gap:16px">
+    <span>候補選定・仮説: <span style="color:#f0b429">銘柄選定・仮説チーム</span></span>
+    <span>追跡・差異分析: <span style="color:#f0b429">シミュレーション追跡・検証チーム</span></span>
+  </div>
   <div id="sim-active-grid" class="sim-grid"><div class="sim-empty">データを読み込み中...</div></div>
   <div class="section-header" style="margin-top:8px"><div class="section-title">追跡履歴</div><div class="section-count" id="sim-hist-count"></div></div>
   <div class="sim-hist-wrap table-wrap">
@@ -606,6 +617,24 @@ function renderSimPage(log){
   const actives=(rawActives||[]).map(normalizeSim);
   const grid=document.getElementById("sim-active-grid");
   document.getElementById("sim-count").textContent=actives.length+"件追跡中";
+  // KPIバー計算
+  const rawHistory2=log.history||(log.simulations?log.simulations.filter(s=>s.result||s.actual_result):[])||[];
+  const histNorm=rawHistory2.map(normalizeSim);
+  const completed=histNorm.filter(h=>h.result);
+  const wins=completed.filter(h=>(h.result_pct||0)>0);
+  const losses=completed.filter(h=>(h.result_pct||0)<=0);
+  const avgWin=wins.length?wins.reduce((s,h)=>s+(h.result_pct||0),0)/wins.length:null;
+  const avgLoss=losses.length?losses.reduce((s,h)=>s+(h.result_pct||0),0)/losses.length:null;
+  const winRate=completed.length?wins.length/completed.length*100:null;
+  const allHyp=[...actives,...histNorm].flatMap(a=>a.hypothesis_history||[]);
+  const hypHits=allHyp.filter(h=>h.match).length;
+  const hypRate=allHyp.length?hypHits/allHyp.length*100:null;
+  const fmtPct=(v,good)=>v===null?'-':`<span style="color:${v>=good?'#3fb950':'#f85149'}">${v.toFixed(1)}%</span>`;
+  document.getElementById('kpi-total').textContent=completed.length+'件';
+  document.getElementById('kpi-winrate').innerHTML=fmtPct(winRate,50);
+  document.getElementById('kpi-hyprate').innerHTML=fmtPct(hypRate,55);
+  document.getElementById('kpi-avgwin').textContent=avgWin!==null?`+${avgWin.toFixed(1)}%`:'-';
+  document.getElementById('kpi-avgloss').textContent=avgLoss!==null?`${avgLoss.toFixed(1)}%`:'-';
   if(actives.length===0){
     grid.innerHTML='<div class="sim-empty">現在追跡中の銘柄はありません</div>';
   }else{

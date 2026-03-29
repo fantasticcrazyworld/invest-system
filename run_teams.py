@@ -51,10 +51,10 @@ TEAM_KPIS = {
             {'id': 'source_count',     'what': '情報源数',                   'target': '3件以上',  'how': 'Gemini groundingChunks の件数'},
         ]
     },
-    '分析チーム': {
+    '銘柄選定・仮説チーム': {
         'description': 'Aランク銘柄を正確に選定し、判断理由を明示する',
         'kpis': [
-            {'id': 'a_rank_win_rate',  'what': 'Aランク銘柄の2週間後勝率',  'target': '60%以上',  'how': '検証チームがシミュレーションで追跡・集計'},
+            {'id': 'a_rank_win_rate',  'what': 'Aランク銘柄の2週間後勝率',  'target': '60%以上',  'how': 'シミュレーション追跡・検証チームがシミュレーションで追跡・集計'},
             {'id': 'rs_retention',     'what': 'Aランク選定銘柄のRS維持率', 'target': '70%以上',  'how': '2週後もRS26w上位30%以内を維持している割合'},
             {'id': 'reason_quality',   'what': '判断理由の具体性',           'target': '根拠3つ以上/銘柄', 'how': 'テクニカル/ファンダ/RS の3軸で根拠が記載されているか'},
             {'id': 'stock_count',      'what': '評価銘柄数',                 'target': '5銘柄以上/日', 'how': 'A/B/Cランク合計の評価銘柄数'},
@@ -73,7 +73,7 @@ TEAM_KPIS = {
         'description': '市場フェーズを正確に判定し、具体的なエントリー計画を立案する',
         'kpis': [
             {'id': 'phase_accuracy',   'what': 'フェーズ判定精度',           'target': '70%以上',  'how': '翌週の市場動向と当日判定（Attack/Steady/Defend）が一致した割合'},
-            {'id': 'entry_win_rate',   'what': 'エントリー後2週間勝率',      'target': '50%以上',  'how': '検証チームが追跡。エントリー推奨銘柄が2週後に利益圏にある割合'},
+            {'id': 'entry_win_rate',   'what': 'エントリー後2週間勝率',      'target': '50%以上',  'how': 'シミュレーション追跡・検証チームが追跡。エントリー推奨銘柄が2週後に利益圏にある割合'},
             {'id': 'rr_ratio',         'what': '平均RR比',                   'target': '3.0以上',  'how': '各エントリー候補の（目標-エントリー）/（エントリー-損切り）の平均'},
             {'id': 'plan_concreteness','what': 'アクションプランの具体性',   'target': '銘柄/価格/理由を全て明記', 'how': 'エントリー候補テーブルに銘柄名・コード・価格・損切り・目標・RR比・根拠が記載されているか'},
         ]
@@ -103,13 +103,13 @@ TEAM_KPIS = {
             {'id': 'pdca_cycle',       'what': 'PDCA回転数',                 'target': '週4回以上', 'how': '過去7日間でaudit_log.mdへの書き込みが4回以上あるか'},
         ]
     },
-    '検証チーム': {
+    'シミュレーション追跡・検証チーム': {
         'description': 'シミュレーション追跡と差異分析により、全チームの予測精度を向上させる',
         'kpis': [
             {'id': 'sim_direction',    'what': 'シミュレーション方向一致率', 'target': '50%→60%（成長目標）', 'how': '予測した上昇/下落方向と実際の結果が一致した割合'},
             {'id': 'analysis_complete','what': '差異分析完了率',             'target': '100%',     'how': '追跡終了した全シミュレーションに原因分析が付いているか'},
             {'id': 'kpi_check',        'what': 'KPI自動チェック実施',        'target': '毎日',     'how': 'kpi_log.jsonに当日分の記録があるか'},
-            {'id': 'feedback_count',   'what': '他チームへのフィードバック数', 'target': '1件以上/週', 'how': '分析チーム・投資戦略チームへの改善フィードバックが週1件以上あるか'},
+            {'id': 'feedback_count',   'what': '他チームへのフィードバック数', 'target': '1件以上/週', 'how': '銘柄選定・仮説チーム・投資戦略チームへの改善フィードバックが週1件以上あるか'},
         ]
     },
 }
@@ -413,10 +413,10 @@ def run_analysis():
 5. ミネルヴィニ基準を満たしつつある「準備中」の銘柄
 """
     gemini_text, sources = call_gemini(g_prompt)
-    save_source_log('分析チーム', sources, gemini_text)
+    save_source_log('銘柄選定・仮説チーム', sources, gemini_text)
 
     if IS_MARKET_DAY:
-        prompt = f"""あなたは投資チームの「分析チーム」です。本日 {TODAY} の銘柄分析を行ってください。
+        prompt = f"""あなたは投資チームの「銘柄選定・仮説チーム」です。本日 {TODAY} の銘柄分析を行ってください。
 
 ## 情報収集チームのレポート
 {info_report[:1200]}
@@ -432,7 +432,7 @@ def run_analysis():
 - RS: RS26wがプラスかつ高水準 / ファンダ: 売上・利益が前年比20%以上成長
 
 ## 出力フォーマット（必ずこの形式で）
-# 分析チーム レポート [{DAY_LABEL}]
+# 銘柄選定・仮説チーム レポート [{DAY_LABEL}]
 日付: {TODAY}
 
 ## 市場環境評価
@@ -460,7 +460,7 @@ def run_analysis():
 """
     elif DAY_MODE == 'saturday':
         prev_analysis = read_report('analysis')
-        prompt = f"""あなたは投資チームの「分析チーム」です。{DAY_LABEL}として今週の分析精度を振り返ってください。
+        prompt = f"""あなたは投資チームの「銘柄選定・仮説チーム」です。{DAY_LABEL}として今週の分析精度を振り返ってください。
 
 ## 今週の分析レポート（直近）
 {prev_analysis[:2000]}
@@ -469,7 +469,7 @@ def run_analysis():
 {gemini_text}
 
 ## 出力フォーマット（必ずこの形式で）
-# 分析チーム レポート [{DAY_LABEL}]
+# 銘柄選定・仮説チーム レポート [{DAY_LABEL}]
 日付: {TODAY}
 
 ## 今週の分析精度振り返り
@@ -490,7 +490,7 @@ def run_analysis():
 （今週の経験から導いた改善策）
 """
     else:  # sunday
-        prompt = f"""あなたは投資チームの「分析チーム」です。{DAY_LABEL}として来週の銘柄を事前分析してください。
+        prompt = f"""あなたは投資チームの「銘柄選定・仮説チーム」です。{DAY_LABEL}として来週の銘柄を事前分析してください。
 
 ## 情報収集チームの来週準備レポート
 {info_report[:1500]}
@@ -499,7 +499,7 @@ def run_analysis():
 {gemini_text}
 
 ## 出力フォーマット（必ずこの形式で）
-# 分析チーム レポート [{DAY_LABEL}]
+# 銘柄選定・仮説チーム レポート [{DAY_LABEL}]
 日付: {TODAY}
 
 ## 来週の事前分析（Aランク候補）
@@ -630,7 +630,7 @@ def run_risk_management():
 ## 情報収集チームのレポート
 {info_report[:800]}
 
-## 分析チームのレポート
+## 銘柄選定・仮説チームのレポート
 {analysis_report[:600]}
 
 ## ポートフォリオデータ
@@ -763,7 +763,7 @@ def run_strategy():
 ## 情報収集チーム レポート
 {info_report[:1000]}
 
-## 分析チーム レポート
+## 銘柄選定・仮説チーム レポート
 {analysis_report[:1500]}
 
 ## リスク管理チーム レポート
@@ -894,7 +894,7 @@ def run_daily_report():
 ## 情報収集チーム
 {info[:1500]}
 
-## 分析チーム
+## 銘柄選定・仮説チーム
 {analysis[:2000]}
 
 ## リスク管理チーム
@@ -914,7 +914,7 @@ def run_daily_report():
 ## 各チーム詳細
 ### 情報収集チーム
 （要約200字以内）
-### 分析チーム
+### 銘柄選定・仮説チーム
 （要約200字以内）
 ### リスク管理チーム
 （要約200字以内）
@@ -990,7 +990,7 @@ def detect_phase(screen_data: list) -> dict:
     return {'phase': phase, 'score': score, 'reasons': reasons}
 
 
-# ─── Team 8: 検証チーム ────────────────────────────────────────────
+# ─── Team 8: シミュレーション追跡・検証チーム ────────────────────────────────────────────
 MAX_SIM_SLOTS = 5  # 同時追跡上限
 
 def _make_new_sim(best: dict) -> dict:
@@ -1156,7 +1156,7 @@ def run_verification():
             'hypothesis_history': s.get('hypothesis_history', [])[-3:]
         } for s in sims_needing_hypothesis], ensure_ascii=False, indent=2)
 
-        hyp_prompt = f"""あなたは投資チームの「分析チーム（テクニカル担当）」です。
+        hyp_prompt = f"""あなたは投資チームの「銘柄選定・仮説チーム（テクニカル担当）」です。
 以下の追跡中銘柄について、翌営業日（{TODAY}の翌日）の株価方向仮説を立ててください。
 
 ## 追跡銘柄
@@ -1229,7 +1229,7 @@ def run_verification():
 5. 機械学習・AIを使った株価予測精度の現状（参考として）
 """
     gemini_text, sources = call_gemini(g_prompt)
-    save_source_log('検証チーム', sources, gemini_text)
+    save_source_log('シミュレーション追跡・検証チーム', sources, gemini_text)
 
     # ── Claude: 検証レポート生成 ──
     history_str = json.dumps(history[-10:], ensure_ascii=False, indent=2) if history else '（履歴なし）'
@@ -1242,7 +1242,7 @@ def run_verification():
     if not active_table_rows:
         active_table_rows = "| （なし） | - | - | - | - | - |\n"
 
-    prompt = f"""あなたは投資チームの「検証チーム」です。{DAY_LABEL}の検証レポートを作成してください。
+    prompt = f"""あなたは投資チームの「シミュレーション追跡・検証チーム」です。{DAY_LABEL}の検証レポートを作成してください。
 
 ## アクティブシミュレーション（{len(actives)}件）
 {actives_str}
@@ -1265,7 +1265,7 @@ def run_verification():
 - 方向一致率: {dir_accuracy:.1f}%
 - 翌日仮説的中率: {hyp_accuracy:.1f}%（{hyp_hits}/{hyp_total}件）
 
-## 分析チームレポート（参照）
+## 銘柄選定・仮説チームレポート（参照）
 {analysis_report[:800]}
 
 ## 投資戦略チームレポート（参照）
@@ -1275,7 +1275,7 @@ def run_verification():
 {gemini_text}
 
 ## 出力フォーマット（必ずこの形式で）
-# 検証チーム レポート [{DAY_LABEL}]
+# シミュレーション追跡・検証チーム レポート [{DAY_LABEL}]
 日付: {TODAY}
 
 ## シミュレーション現況
@@ -1294,26 +1294,26 @@ def run_verification():
 | 平均損失 | {avg_loss:+.1f}% | -8%以内 | {'✅' if avg_loss >= -8 else '⚠️' if losses else '-'} |
 
 ## 翌日仮説検証（本日の差異分析）
-担当: **分析チーム（テクニカル担当）→ 検証チーム**
+担当: **銘柄選定・仮説チーム（テクニカル担当）→ シミュレーション追跡・検証チーム**
 （本日の仮説結果: {hyp_check_str}）
 （外れた場合は具体的な原因を分析: 想定外の材料、サポート割れ、出来高異常等）
 
-## 明日の仮説（分析チームが生成済み）
+## 明日の仮説（銘柄選定・仮説チームが生成済み）
 （simulation_log.jsonのnext_hypothesisフィールドに記録済み。各銘柄の根拠を補足説明）
 
 ## 直近の結果振り返り
-担当: **検証チーム**
+担当: **シミュレーション追跡・検証チーム**
 （直近3件の売買結果: 予測 vs 実際を分析し、外れた原因を明記）
 
 ## 分析精度の改善提案
-### → 分析チームへ（担当: 検証チーム → 分析チーム）
+### → 銘柄選定・仮説チームへ（担当: シミュレーション追跡・検証チーム →銘柄選定・仮説チーム）
 （Aランク選定基準の改善点）
 
-### → 投資戦略チームへ（担当: 検証チーム → 投資戦略チーム）
+### → 投資戦略チームへ（担当: シミュレーション追跡・検証チーム →投資戦略チーム）
 （エントリータイミング・損切り設定の改善点）
 
 ## 学習パターン
-担当: **検証チーム**
+担当: **シミュレーション追跡・検証チーム**
 （蓄積データから見えてきた傾向・法則）
 
 ## 参考: 精度向上のためのベストプラクティス
@@ -1540,11 +1540,11 @@ def run_internal_audit():
 # ─── メイン ──────────────────────────────────────────────────────
 TEAMS = {
     'info':         ('情報収集チーム',   run_info_gathering),
-    'analysis':     ('分析チーム',       run_analysis),
+    'analysis':     ('銘柄選定・仮説チーム',       run_analysis),
     'risk':         ('リスク管理チーム', run_risk_management),
     'strategy':     ('投資戦略チーム',   run_strategy),
     'report':       ('レポート統括',     run_daily_report),
-    'verification': ('検証チーム',       run_verification),
+    'verification': ('シミュレーション追跡・検証チーム',       run_verification),
     'security':     ('セキュリティチーム', run_security),
     'audit':        ('内部監査チーム',   run_internal_audit),
 }
