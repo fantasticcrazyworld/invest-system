@@ -991,17 +991,50 @@ def detect_phase(screen_data: list) -> dict:
 
 
 # ─── Team 8: 検証チーム ────────────────────────────────────────────
+MAX_SIM_SLOTS = 3  # 同時追跡上限
+
+def _make_new_sim(best: dict) -> dict:
+    """候補銘柄からシミュレーションエントリーを生成"""
+    ep = best.get('price', 0)
+    stop_pct = 0.08
+    target_pct = 0.25
+    return {
+        'code': str(best.get('code', '')),
+        'name': best.get('name', ''),
+        'entry_price': round(ep, 0),
+        'stop_loss': round(ep * (1 - stop_pct), 0),
+        'target1': round(ep * (1 + target_pct), 0),
+        'rr_ratio': round(target_pct / stop_pct, 1),
+        'start_date': TODAY,
+        'end_date': None,
+        'days_elapsed': 0,
+        'current_price': ep,
+        'current_pct': 0.0,
+        'rs_26w': best.get('rs_26w', 0),
+        'score': best.get('score', 0),
+        'result': None,
+        'result_pct': None,
+        'direction_match': None,
+        'reason': f"RS26w={best.get('rs_26w',0):.2f}, score={best.get('score',0)}/7, 上位候補"
+    }
+
+
 def run_verification():
     """
     シミュレーション追跡 + 予測精度検証 + 他チームへのフィードバック
-    - simulation_log.jsonを更新（アクティブ追跡 → 結果記録 → 次候補選定）
+    - simulation_log.jsonを更新（最大3銘柄同時追跡）
     - verification.mdを生成
     """
     sim_log_path = REPORT_DIR / 'simulation_log.json'
-    log = {'tracking_rule': '2週間(10営業日)追跡', 'active': None, 'history': []}
+    log = {'tracking_rule': '2週間(10営業日)追跡・最大3銘柄同時', 'actives': [], 'history': []}
     if sim_log_path.exists():
         try:
-            log = json.loads(sim_log_path.read_text(encoding='utf-8'))
+            raw = json.loads(sim_log_path.read_text(encoding='utf-8'))
+            # 旧フォーマット（active単体）からの移行
+            if 'active' in raw and 'actives' not in raw:
+                old = raw.pop('active')
+                raw['actives'] = [old] if old else []
+            log = raw
         except Exception:
             pass
 
@@ -1012,98 +1045,76 @@ def run_verification():
     analysis_report = read_report('analysis')
     strategy_report = read_report('strategy')
     history = log.get('history', [])
+    actives = log.get('actives', [])
 
-    # ── アクティブシミュレーションの更新 ──
-    active = log.get('active')
-    completion_note = ''
-    if active:
-        code = str(active.get('code', ''))
+    # ── 各アクティブシミュレーションの更新 ──
+    completion_notes = []
+    remaining = []
+    for sim in actives:
+        code = str(sim.get('code', ''))
         current_stock = stocks_by_code.get(code)
-        current_price = current_stock.get('price', active.get('entry_price')) if current_stock else active.get('entry_price')
-        entry = active['entry_price']
-        stop = active['stop_loss']
-        target1 = active['target1']
-        start = active['start_date']
-        end = active.get('end_date', '')
+        current_price = current_stock.get('price', sim.get('entry_price')) if current_stock else sim.get('entry_price')
+        entry = sim['entry_price']
+        stop = sim['stop_loss']
+        target1 = sim['target1']
 
-        days_elapsed = active.get('days_elapsed', 0) + (1 if IS_MARKET_DAY else 0)
-        active['days_elapsed'] = days_elapsed
-        active['current_price'] = current_price
+        days_elapsed = sim.get('days_elapsed', 0) + (1 if IS_MARKET_DAY else 0)
+        sim['days_elapsed'] = days_elapsed
+        sim['current_price'] = current_price
         pct = (current_price - entry) / entry * 100 if entry else 0
-        active['current_pct'] = round(pct, 2)
+        sim['current_pct'] = round(pct, 2)
 
-        # 終了条件チェック
         ended = False
         if current_price <= stop:
-            active['result'] = 'stopped_out'
-            active['result_pct'] = round(pct, 2)
-            completion_note = f"損切り到達: {current_price}円 ({pct:+.1f}%)"
+            sim['result'] = 'stopped_out'
+            sim['result_pct'] = round(pct, 2)
+            completion_notes.append(f"{sim['name']}: 損切り到達 ({pct:+.1f}%)")
             ended = True
         elif current_price >= target1:
-            active['result'] = 'target1_hit'
-            active['result_pct'] = round(pct, 2)
-            completion_note = f"目標①到達: {current_price}円 ({pct:+.1f}%)"
+            sim['result'] = 'target1_hit'
+            sim['result_pct'] = round(pct, 2)
+            completion_notes.append(f"{sim['name']}: 目標①到達 ({pct:+.1f}%)")
             ended = True
         elif days_elapsed >= 10:
-            active['result'] = 'time_expired'
-            active['result_pct'] = round(pct, 2)
-            completion_note = f"期間終了(10日): {current_price}円 ({pct:+.1f}%)"
+            sim['result'] = 'time_expired'
+            sim['result_pct'] = round(pct, 2)
+            completion_notes.append(f"{sim['name']}: 期間終了 ({pct:+.1f}%)")
             ended = True
 
         if ended:
-            active['end_date'] = TODAY
-            # 方向一致判定
-            predicted_up = entry < target1
-            actual_up = current_price > entry
-            active['direction_match'] = predicted_up == actual_up
-            history.append(active)
-            log['history'] = history
-            log['active'] = None
-            active = None
+            sim['end_date'] = TODAY
+            sim['direction_match'] = (entry < target1) == (current_price > entry)
+            history.append(sim)
+        else:
+            remaining.append(sim)
 
-    # ── 新しいシミュレーション候補の選定（アクティブがない場合）──
-    new_sim_note = ''
-    if not active and IS_MARKET_DAY:
-        # 分析レポートからAランク銘柄を抽出して候補選定
+    actives = remaining
+    log['history'] = history
+
+    # ── 空きスロットを埋める（平日のみ） ──
+    new_sim_notes = []
+    if IS_MARKET_DAY and len(actives) < MAX_SIM_SLOTS:
         a_rank_stocks = sorted(
             [s for s in stocks if isinstance(s, dict) and s.get('score', 0) >= 7],
             key=lambda x: x.get('rs_26w', 0), reverse=True
         )
-        # 直近historyで使った銘柄を除外
-        used_codes = {str(h.get('code', '')) for h in history[-5:]}
+        # 直近30日のhistory + 現在actives で使用済みコードを除外
+        used_codes = {str(h.get('code', '')) for h in history if h.get('start_date', '') >= (
+            __import__('datetime').date.today() - __import__('datetime').timedelta(days=30)
+        ).isoformat()}
+        used_codes |= {str(a.get('code', '')) for a in actives}
         candidates = [s for s in a_rank_stocks if str(s.get('code', '')) not in used_codes]
 
-        if candidates:
-            best = candidates[0]
-            ep = best.get('price', 0)
-            stop_pct = 0.08
-            target_pct = 0.25
-            new_active = {
-                'code': str(best.get('code', '')),
-                'name': best.get('name', ''),
-                'entry_price': round(ep, 0),
-                'stop_loss': round(ep * (1 - stop_pct), 0),
-                'target1': round(ep * (1 + target_pct), 0),
-                'rr_ratio': round(target_pct / stop_pct, 1),
-                'start_date': TODAY,
-                'end_date': None,
-                'days_elapsed': 0,
-                'current_price': ep,
-                'current_pct': 0.0,
-                'rs_26w': best.get('rs_26w', 0),
-                'score': best.get('score', 0),
-                'result': None,
-                'result_pct': None,
-                'direction_match': None,
-                'reason': f"RS26w={best.get('rs_26w',0):.2f}, score={best.get('score',0)}/7, 上位候補"
-            }
-            log['active'] = new_active
-            active = new_active
-            new_sim_note = f"新規: {best.get('name','')}({best.get('code','')}) EP={ep:.0f}円"
+        slots_to_fill = MAX_SIM_SLOTS - len(actives)
+        for best in candidates[:slots_to_fill]:
+            new_sim = _make_new_sim(best)
+            actives.append(new_sim)
+            new_sim_notes.append(f"新規: {best.get('name','')}({best.get('code','')}) EP={best.get('price',0):.0f}円")
 
+    log['actives'] = actives
     log['last_updated'] = TODAY
     sim_log_path.write_text(json.dumps(log, ensure_ascii=False, indent=2), encoding='utf-8')
-    print(f'  -> simulation_log.json 更新')
+    print(f'  -> simulation_log.json 更新 (追跡中: {len(actives)}件)')
 
     # ── 統計計算 ──
     completed = [h for h in history if h.get('result')]
@@ -1117,7 +1128,8 @@ def run_verification():
 
     # ── Gemini: 精度向上のための情報収集 ──
     print(f'  [Gemini] 検証情報収集中... ({DAY_LABEL})')
-    sim_summary = f"追跡中: {active['name'] if active else 'なし'} / 累計{len(completed)}件完了 / 勝率{win_rate:.0f}%"
+    active_names = ', '.join(a['name'] for a in actives) if actives else 'なし'
+    sim_summary = f"追跡中({len(actives)}件): {active_names} / 累計{len(completed)}件完了 / 勝率{win_rate:.0f}%"
     g_prompt = f"""投資シミュレーションの精度向上に役立つ情報を収集してください。
 
 現在の状況: {sim_summary}
@@ -1133,16 +1145,23 @@ def run_verification():
 
     # ── Claude: 検証レポート生成 ──
     history_str = json.dumps(history[-10:], ensure_ascii=False, indent=2) if history else '（履歴なし）'
-    active_str = json.dumps(active, ensure_ascii=False, indent=2) if active else '（なし）'
+    actives_str = json.dumps(actives, ensure_ascii=False, indent=2) if actives else '（なし）'
+
+    # アクティブ追跡テーブル行生成
+    active_table_rows = ''
+    for a in actives:
+        active_table_rows += f"| {a['name']}（{a['code']}） | {a['entry_price']}円 | {a['current_price']}円（{a['current_pct']:+.1f}%） | {a['stop_loss']}円 | {a['target1']}円 | {a['days_elapsed']}/10日 |\n"
+    if not active_table_rows:
+        active_table_rows = "| （なし） | - | - | - | - | - |\n"
 
     prompt = f"""あなたは投資チームの「検証チーム」です。{DAY_LABEL}の検証レポートを作成してください。
 
-## アクティブシミュレーション
-{active_str}
+## アクティブシミュレーション（{len(actives)}件）
+{actives_str}
 
 ## 本日の更新
-- 完了: {completion_note if completion_note else 'なし'}
-- 新規開始: {new_sim_note if new_sim_note else 'なし'}
+- 完了: {', '.join(completion_notes) if completion_notes else 'なし'}
+- 新規開始: {', '.join(new_sim_notes) if new_sim_notes else 'なし'}
 
 ## シミュレーション履歴（直近10件）
 {history_str}
@@ -1168,16 +1187,10 @@ def run_verification():
 日付: {TODAY}
 
 ## シミュレーション現況
-### アクティブ追跡
-| 項目 | 内容 |
-|------|------|
-| 追跡銘柄 | {active['name'] if active else 'なし'}（{active['code'] if active else '-'}） |
-| エントリー価格 | {active['entry_price'] if active else '-'}円 |
-| 現在値 | {active['current_price'] if active else '-'}円（{active['current_pct'] if active else '-'}%） |
-| 損切りライン | {active['stop_loss'] if active else '-'}円 |
-| 目標① | {active['target1'] if active else '-'}円 |
-| 経過日数 | {active['days_elapsed'] if active else '-'}/10日 |
-
+### アクティブ追跡（最大{MAX_SIM_SLOTS}銘柄同時）
+| 銘柄 | エントリー | 現在値 | 損切り | 目標① | 経過 |
+|------|-----------|--------|--------|--------|------|
+{active_table_rows}
 ## 累計パフォーマンス
 | KPI | 現状 | 目標 | 評価 |
 |-----|------|------|------|
