@@ -1155,7 +1155,7 @@ def run_verification():
     new_sim_notes = []
     if IS_MARKET_DAY and len(actives) < MAX_SIM_SLOTS:
         a_rank_stocks = sorted(
-            [s for s in stocks if isinstance(s, dict) and s.get('score', 0) >= 7],
+            [s for s in stocks if isinstance(s, dict) and s.get('score', 0) >= 6],
             key=lambda x: x.get('rs_26w', 0), reverse=True
         )
         # 直近30日のhistory + 現在actives で使用済みコードを除外
