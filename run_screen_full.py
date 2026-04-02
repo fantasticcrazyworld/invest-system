@@ -787,8 +787,13 @@ def run_bulk():
             log.warning(f"Nikkei225 bench from bulk data failed: {e}")
     if not bench_closes:
         try:
-            bench_closes = _daily_to_df(_fetch_daily(NIKKEI225_CODE))["close"].tolist()
-            log.info(f"Nikkei225 bench (fallback): {len(bench_closes)} days")
+            bench_bars_raw = _fetch_daily(NIKKEI225_CODE)
+            bench_df_fb = _daily_to_df(bench_bars_raw)
+            bench_closes = bench_df_fb["close"].tolist()
+            # update_bulk() が使えるようにCSVを保存
+            bench_csv = CSV_DIR / f"{NIKKEI225_CODE}_daily.csv"
+            bench_df_fb.reset_index().to_csv(bench_csv, index=False)
+            log.info(f"Nikkei225 bench (fallback): {len(bench_closes)} days, CSV saved")
         except Exception as e:
             log.warning(f"Nikkei225 bench fallback failed: {e}")
 
@@ -906,6 +911,13 @@ def update_bulk():
         elif bench_csv.exists():
             bench_closes = (pd.read_csv(bench_csv, parse_dates=["date"])
                             .set_index("date")["close"].tolist())
+        if not bench_closes:
+            # CSVなし → 直接フル取得してCSVも保存
+            bench_bars_raw = _fetch_daily(NIKKEI225_CODE, days=400)
+            bench_df_fb = _daily_to_df(bench_bars_raw)
+            bench_closes = bench_df_fb["close"].tolist()
+            bench_df_fb.reset_index().to_csv(bench_csv, index=False)
+            log.info(f"Nikkei225 bench (direct fetch): {len(bench_closes)} days, CSV saved")
         log.info(f"Nikkei225 bench: {len(bench_closes)} days")
     except Exception as e:
         log.warning(f"Nikkei225 bench failed: {e}")
