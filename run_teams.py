@@ -1083,9 +1083,11 @@ MAX_SIM_SLOTS = 5  # 同時追跡上限
 
 def _make_new_sim(best: dict) -> dict:
     """候補銘柄からシミュレーションエントリーを生成"""
-    ep = best.get('price', 0)
+    ep = best.get('price', 0) or 0
     stop_pct = 0.08
     target_pct = 0.25
+    rs26w = best.get('rs_26w') or 0  # null/None を 0 に変換
+    score = best.get('score') or 0   # null/None を 0 に変換
     return {
         'code': str(best.get('code', '')),
         'name': best.get('name', ''),
@@ -1098,12 +1100,12 @@ def _make_new_sim(best: dict) -> dict:
         'days_elapsed': 0,
         'current_price': ep,
         'current_pct': 0.0,
-        'rs_26w': best.get('rs_26w', 0),
-        'score': best.get('score', 0),
+        'rs_26w': rs26w,
+        'score': score,
         'result': None,
         'result_pct': None,
         'direction_match': None,
-        'reason': f"RS26w={best.get('rs_26w',0):.2f}, score={best.get('score',0)}/7, 上位候補"
+        'reason': f"RS26w={rs26w:.2f}, score={score}/7, 上位候補"
     }
 
 
@@ -1215,8 +1217,8 @@ def run_verification():
     new_sim_notes = []
     if IS_MARKET_DAY and len(actives) < MAX_SIM_SLOTS:
         a_rank_stocks = sorted(
-            [s for s in stocks if isinstance(s, dict) and s.get('score', 0) >= 6],
-            key=lambda x: x.get('rs_26w', 0), reverse=True
+            [s for s in stocks if isinstance(s, dict) and (s.get('score') or 0) >= 6],
+            key=lambda x: x.get('rs_26w') or 0, reverse=True  # null/None を 0 に変換
         )
         # 直近30日のhistory + 現在actives で使用済みコードを除外
         used_codes = {str(h.get('code', '')) for h in history if h.get('start_date', '') >= (
@@ -1601,18 +1603,46 @@ def run_internal_audit():
     write_report('internal_audit', result)
 
     # KPIログ: チーム別スコアをJSONで保存（トレンド分析用）
+    # index.html は英語キー・数値（10点満点）を期待するため変換する
+    _TEAM_KEY_MAP = {
+        '情報収集': 'info', '分析': 'analysis', 'リスク管理': 'risk',
+        '投資戦略': 'strategy', '統括': 'report', 'セキュリティ': 'security',
+        '検証': 'verification', '内部監査': 'audit',
+    }
+    def _parse_score(s):
+        """'4/5' → 8.0（10点換算）、数値文字列 → float、その他 → None"""
+        s = s.strip()
+        if '/' in s:
+            try:
+                n, d = s.split('/', 1)
+                return round(float(n.strip()) / float(d.strip()) * 10, 1)
+            except Exception:
+                return None
+        try:
+            return float(s)
+        except Exception:
+            return None
+
     kpi_scores = {}
+    _score_keys = ['coverage', 'specificity', 'usefulness', 'consistency', 'linkage', 'ai_usage']
     for line in result.split('\n'):
         # "| チーム名 | X | X | X | X | X | X | X |" の行をパース
         parts = [p.strip() for p in line.split('|') if p.strip()]
-        if len(parts) >= 8 and parts[0] in ['情報収集', '分析', 'リスク管理', '投資戦略', '統括', 'セキュリティ']:
+        if len(parts) >= 8 and parts[0] in _TEAM_KEY_MAP:
             try:
-                kpi_scores[parts[0]] = {
-                    'coverage': parts[1], 'specificity': parts[2],
-                    'usefulness': parts[3], 'consistency': parts[4],
-                    'linkage': parts[5], 'ai_usage': parts[6], 'total': parts[7]
-                }
-            except IndexError:
+                eng_key = _TEAM_KEY_MAP[parts[0]]
+                scores = {}
+                for i, name in enumerate(_score_keys):
+                    v = _parse_score(parts[i + 1]) if i + 1 < len(parts) else None
+                    if v is not None:
+                        scores[name] = v
+                # total（8列目）も数値換算して格納
+                total_v = _parse_score(parts[7]) if len(parts) > 7 else None
+                if total_v is not None:
+                    scores['total'] = total_v
+                if scores:
+                    kpi_scores[eng_key] = scores
+            except (IndexError, ValueError):
                 pass
     save_kpi_log(kpi_scores)
 
