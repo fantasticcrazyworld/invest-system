@@ -1,4 +1,15 @@
-﻿# Python
+﻿# 秘密情報・認証情報（誤コミット防止）
+.env
+.env.*
+*.key
+*.pem
+secrets/
+.secrets/
+credentials.json
+*_credentials.json
+.jquants_config.json
+
+# Python
 *.pyc
 __pycache__/
 
