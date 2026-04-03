@@ -1,0 +1,36 @@
+name: System Health Check
+
+on:
+  workflow_run:
+    workflows: ["Daily Investment Teams"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run health check
+        env:
+          GITHUB_TOKEN: ${{ secrets.DATA_REPO_TOKEN }}
+        run: |
+          export GITHUB_TOKEN="${GITHUB_TOKEN}"
+          python check_health.py
+        continue-on-error: true
+
+      - name: Post result summary
+        if: always()
+        run: |
+          echo "Health check completed at $(date +'%Y-%m-%d %H:%M:%S JST' --date='TZ=\"Asia/Tokyo\"')"
