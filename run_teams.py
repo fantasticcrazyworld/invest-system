@@ -1517,6 +1517,15 @@ def run_verification():
     actives = remaining
     log['history'] = history
 
+    # ── シナリオ未生成の既存アクティブに3シナリオを追加（平日のみ） ──
+    if IS_MARKET_DAY:
+        sims_without_scenarios = [s for s in actives if not s.get('scenarios')]
+        if sims_without_scenarios:
+            print(f'  [Claude] 既存銘柄{len(sims_without_scenarios)}件のシナリオ生成中...')
+            for sim in sims_without_scenarios:
+                sim['scenarios'] = _generate_scenarios(sim, analysis_report[:500])
+                print(f'    -> {sim["name"]} シナリオ生成完了')
+
     # ── 空きスロットを埋める（平日のみ） ──
     new_sim_notes = []
     if IS_MARKET_DAY and len(actives) < MAX_SIM_SLOTS:
