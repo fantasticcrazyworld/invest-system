@@ -1713,22 +1713,26 @@ def run_internal_audit():
     for line in result.split('\n'):
         # "| チーム名 | X | X | X | X | X | X | X |" の行をパース
         parts = [p.strip() for p in line.split('|') if p.strip()]
-        if len(parts) >= 8 and parts[0] in _TEAM_KEY_MAP:
-            try:
-                eng_key = _TEAM_KEY_MAP[parts[0]]
-                scores = {}
-                for i, name in enumerate(_score_keys):
-                    v = _parse_score(parts[i + 1]) if i + 1 < len(parts) else None
-                    if v is not None:
-                        scores[name] = v
-                # total（8列目）も数値換算して格納
-                total_v = _parse_score(parts[7]) if len(parts) > 7 else None
-                if total_v is not None:
-                    scores['total'] = total_v
-                if scores:
-                    kpi_scores[eng_key] = scores
-            except (IndexError, ValueError):
-                pass
+        if len(parts) < 8:
+            continue
+        # 部分一致でチーム名を検索（「銘柄選定・分析」「シミュレーション追跡・検証」等の複合名に対応）
+        eng_key = next((v for k, v in _TEAM_KEY_MAP.items() if k in parts[0]), None)
+        if not eng_key:
+            continue
+        try:
+            scores = {}
+            for i, name in enumerate(_score_keys):
+                v = _parse_score(parts[i + 1]) if i + 1 < len(parts) else None
+                if v is not None:
+                    scores[name] = v
+            # total（8列目）も数値換算して格納
+            total_v = _parse_score(parts[7]) if len(parts) > 7 else None
+            if total_v is not None:
+                scores['total'] = total_v
+            if scores:
+                kpi_scores[eng_key] = scores
+        except (IndexError, ValueError):
+            pass
     save_kpi_log(kpi_scores)
 
     # 監査ログに追記
