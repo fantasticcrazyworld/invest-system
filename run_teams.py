@@ -1224,11 +1224,40 @@ def _scenario_gaps(scenarios, cumulative_pct, days_elapsed):
             for sid in ('bull', 'base', 'bear')}
 
 
-def _generate_scenarios(sim, context_str=''):
-    """新規シミュレーション銘柄に対して1ヶ月の3シナリオを生成（Claude使用）"""
+def _generate_scenarios(sim, context_str='', market_phase=None):
+    """新規シミュレーション銘柄に対して1ヶ月の3シナリオを生成（Claude使用）
+
+    Args:
+        sim: シミュレーション銘柄dict
+        context_str: 分析レポートなどの追加コンテキスト
+        market_phase: detect_phase()の返り値 {'phase': str, 'score': int, 'reasons': list}
+    """
     ep = sim['entry_price']
     stop_pct = round((ep - sim['stop_loss']) / ep * 100, 1)
     target_pct = round((sim['target1'] - ep) / ep * 100, 1)
+
+    # 機能1: フェーズ・マクロリスク情報をプロンプトに追加
+    phase_str = ''
+    bear_min_prob = 20  # デフォルトのbear最低確率
+    if market_phase:
+        phase = market_phase.get('phase', 'Steady')
+        phase_score = market_phase.get('score', 0)
+        phase_reasons = market_phase.get('reasons', [])
+        phase_reasons_str = '\n'.join(phase_reasons[:3]) if phase_reasons else '（理由なし）'
+        market_day_str = '平日（市場稼働日）' if IS_MARKET_DAY else '週末（市場休場）'
+        phase_str = f"""
+## 現在の市場環境（フェーズ・マクロリスク）
+- 市場稼働: {market_day_str}
+- 市場フェーズ: **{phase}**（スコア: {phase_score}）
+- フェーズ判定根拠:
+{phase_reasons_str}
+- コンテキスト: {context_str[:300] if context_str else '（分析レポートなし）'}
+"""
+        # Defendフェーズ時はbear確率を最低35%に設定
+        if phase == 'Defend':
+            bear_min_prob = 35
+
+    bear_min_note = f'bearの最低確率は{bear_min_prob}%以上にすること（現在フェーズ: {market_phase.get("phase", "Steady") if market_phase else "不明"}）。' if bear_min_prob > 20 else ''
 
     prompt = f"""以下の銘柄について、これから1ヶ月（20営業日）のシミュレーション追跡用に
 強気・中立・弱気の3シナリオを立ててください。
@@ -1236,8 +1265,13 @@ def _generate_scenarios(sim, context_str=''):
 銘柄: {sim['name']}（{sim['code']}）
 エントリー価格: {ep}円  損切り: -{stop_pct}%  目標①: +{target_pct}%
 RS26w: {sim.get('rs_26w','N/A')}  スコア: {sim.get('score','N/A')}/7
-
-{context_str}
+{phase_str}
+## 確率設定の指示
+- 現在のフェーズとマクロリスクを考慮して確率を設定すること
+- {bear_min_note}
+- Attackフェーズ時はbull確率を高め（35%以上）に設定すること
+- Defendフェーズ時はbear確率を最低35%以上にすること（上記マクロリスク環境が深刻な場合は50%以上も検討）
+- bull+base+bear の合計は必ず100にすること
 
 ## 出力（JSONのみ・説明文不要）
 {{
@@ -1359,6 +1393,202 @@ JSONのみ返答（説明文不要）:
     }
 
 
+# ─── 機能2: セクター分散チェック ────────────────────────────────────────────────
+def _get_sector_group(code_str: str, stock_data: dict = None) -> str:
+    """
+    銘柄コードからセクターグループを返す。
+    stock_dataがあれば 'sector' / 'industry' フィールドを優先使用。
+    なければコード番号範囲で簡易判定。
+    """
+    # データがあればsector/industryフィールドを優先
+    if stock_data:
+        sector = stock_data.get('sector') or stock_data.get('industry') or ''
+        if sector:
+            return sector
+
+    # フィールドがなければコード番号範囲で簡易判定
+    try:
+        code_int = int(code_str)
+        if 6200 <= code_int <= 6999:
+            return '電機・精密機器・機械'
+        elif 3000 <= code_int <= 3999:
+            return '繊維・化学'
+        elif 7000 <= code_int <= 7999:
+            return '自動車・輸送'
+        elif 1000 <= code_int <= 1999:
+            return '農林・水産・鉱業・エネルギー'
+        elif 2000 <= code_int <= 2999:
+            return '食品・飲料'
+        elif 4000 <= code_int <= 4999:
+            return '医薬・バイオ'
+        elif 5000 <= code_int <= 5999:
+            return '鉄鋼・非鉄・建設・ガラス'
+        elif 8000 <= code_int <= 8999:
+            return '金融・不動産'
+        elif 9000 <= code_int <= 9999:
+            return '通信・インフラ・サービス'
+        else:
+            return 'その他'
+    except (ValueError, TypeError):
+        return 'その他'
+
+
+def _check_sector_diversity(actives: list, candidate_code: str, stocks_by_code: dict) -> tuple:
+    """
+    セクター分散チェック: 同一セクターの銘柄が2件以上ある場合はFalseを返す。
+    セクターはscreening dataの 'sector' or 'industry' フィールドを使用。
+    なければ簡易判定（コード範囲: 6xxx=電機・機械, 3xxx=繊維・化学等）。
+
+    Args:
+        actives: 現在アクティブなシミュレーションリスト
+        candidate_code: チェック対象の銘柄コード（str）
+        stocks_by_code: {code: stock_data} のdict
+
+    Returns:
+        (bool: 追加可能か, str: 理由)
+    """
+    SECTOR_LIMIT = 2  # 同一セクター上限
+
+    try:
+        candidate_data = stocks_by_code.get(str(candidate_code), {})
+        candidate_sector = _get_sector_group(str(candidate_code), candidate_data)
+
+        # アクティブ銘柄の各セクターをカウント
+        sector_counts = {}
+        for active in actives:
+            active_code = str(active.get('code', ''))
+            active_data = stocks_by_code.get(active_code, {})
+            sector = _get_sector_group(active_code, active_data)
+            sector_counts[sector] = sector_counts.get(sector, 0) + 1
+
+        current_count = sector_counts.get(candidate_sector, 0)
+        if current_count >= SECTOR_LIMIT:
+            reason = f'セクター「{candidate_sector}」はすでに{current_count}銘柄追跡中（上限: {SECTOR_LIMIT}銘柄）'
+            print(f'    [セクター分散] 除外: {candidate_code} - {reason}')
+            return False, reason
+
+        return True, f'セクター「{candidate_sector}」は{current_count}銘柄（上限: {SECTOR_LIMIT}銘柄未満）→ 追加可能'
+    except Exception as e:
+        print(f'  [警告] セクター分散チェック失敗: {e}')
+        return True, 'チェック失敗（デフォルト: 追加許可）'
+
+
+# ─── 機能3: 週次シナリオ精度レビュー ─────────────────────────────────────────────
+def _weekly_scenario_review(actives: list, history: list) -> str:
+    """
+    土曜日（DAY_MODE == 'saturday'）に実行する週次シナリオ精度レビュー。
+    各追跡銘柄について week1（5営業日）の daily_log を集計し、
+    実際の累積騰落率 vs 各シナリオの w1_pct を比較する。
+
+    Args:
+        actives: アクティブシミュレーションリスト
+        history: 完了済みシミュレーションリスト
+
+    Returns:
+        markdown形式の週次レビュー文字列
+    """
+    print('  [週次レビュー] 土曜日: シナリオ精度レビュー生成中...')
+    try:
+        all_sims = actives + history
+        review_lines = []
+        scenario_lead_counts = {'bull': 0, 'base': 0, 'bear': 0}
+        total_w1_entries = 0
+
+        for sim in all_sims:
+            daily_log = sim.get('daily_log', [])
+            scenarios = sim.get('scenarios', {})
+            if not daily_log or not scenarios:
+                continue
+
+            # week1（5営業日分）のdaily_logを取得
+            w1_logs = [d for d in daily_log if isinstance(d, dict)][:5]
+            if not w1_logs:
+                continue
+
+            # week1 実際の累積騰落率（最後のエントリ）
+            actual_w1_pct = w1_logs[-1].get('cumulative_pct', 0)
+            total_w1_entries += 1
+
+            # 各シナリオのw1_pctとの差
+            best_sid = None
+            best_gap = float('inf')
+            gaps_str_parts = []
+            for sid in ('bull', 'base', 'bear'):
+                scen = scenarios.get(sid, {})
+                w1_target = scen.get('w1_pct', 0)
+                gap = abs(actual_w1_pct - w1_target)
+                gaps_str_parts.append(f"{sid}={w1_target:+.1f}%（差{gap:+.1f}%）")
+                if gap < best_gap:
+                    best_gap = gap
+                    best_sid = sid
+
+            if best_sid:
+                scenario_lead_counts[best_sid] = scenario_lead_counts.get(best_sid, 0) + 1
+
+            best_label = (scenarios.get(best_sid, {}).get('label', best_sid)) if best_sid else '不明'
+            review_lines.append(
+                f"- **{sim.get('name', '?')}**（{sim.get('code', '?')}）: "
+                f"実績w1={actual_w1_pct:+.1f}% | {' / '.join(gaps_str_parts)} "
+                f"→ **週次リードシナリオ: {best_label}**"
+            )
+
+        if not review_lines:
+            return '\n## 週次シナリオ精度レビュー（土曜）\n\n（週1件以上のdaily_logデータがありません）\n'
+
+        # シナリオ別リード回数サマリ
+        bull_rate = scenario_lead_counts['bull'] / total_w1_entries * 100 if total_w1_entries else 0
+        base_rate = scenario_lead_counts['base'] / total_w1_entries * 100 if total_w1_entries else 0
+        bear_rate = scenario_lead_counts['bear'] / total_w1_entries * 100 if total_w1_entries else 0
+
+        # Claudeでシナリオ確率更新提案を生成
+        print('    [Claude] 週次シナリオ精度レビュー提案生成中...')
+        detail_str = '\n'.join(review_lines)
+        update_prompt = f"""投資シミュレーション検証チームです。今週（土曜）のシナリオ精度を振り返ってください。
+
+## 週次シナリオ実績サマリ（追跡{total_w1_entries}銘柄）
+{detail_str}
+
+## シナリオ別 週次リード回数
+- 強気（bull）リード: {scenario_lead_counts['bull']}件 ({bull_rate:.0f}%)
+- 中立（base）リード: {scenario_lead_counts['base']}件 ({base_rate:.0f}%)
+- 弱気（bear）リード: {scenario_lead_counts['bear']}件 ({bear_rate:.0f}%)
+
+以下の点を簡潔に分析してください（200文字以内）:
+1. 今週最も的中したシナリオパターンと理由
+2. 来週のシナリオ確率設定への反映提案（例: bear確率を+5%調整）
+3. 改善ポイント（シナリオ設計・確率設定の課題）
+
+[AI分析]ラベルを付けて回答してください。"""
+
+        try:
+            claude_suggestion = call_claude(update_prompt, max_tokens=500, inject_labels=False)
+        except Exception as e:
+            claude_suggestion = f'[AI分析] 提案生成失敗: {e}'
+
+        md = f"""
+## 週次シナリオ精度レビュー（土曜: {TODAY}）
+
+### 銘柄別 Week1 実績 vs シナリオ
+{chr(10).join(review_lines)}
+
+### シナリオ別リード回数（計{total_w1_entries}銘柄）
+| シナリオ | リード回数 | 比率 |
+|---------|----------|------|
+| 強気（bull） | {scenario_lead_counts['bull']}件 | {bull_rate:.0f}% |
+| 中立（base） | {scenario_lead_counts['base']}件 | {base_rate:.0f}% |
+| 弱気（bear） | {scenario_lead_counts['bear']}件 | {bear_rate:.0f}% |
+
+### Claude提案（確率設定の改善案）
+{claude_suggestion}
+"""
+        print(f'    [週次レビュー] 完了 ({total_w1_entries}銘柄分析)')
+        return md
+
+    except Exception as e:
+        print(f'  [警告] 週次シナリオ精度レビュー失敗: {e}')
+        return f'\n## 週次シナリオ精度レビュー（土曜）\n\n（レビュー生成失敗: {e}）\n'
+
+
 def run_verification():
     """
     シミュレーション追跡 + 3シナリオ日次比較 + 他チームへのフィードバック (v2)
@@ -1391,6 +1621,14 @@ def run_verification():
     strategy_report = read_report('strategy')
     history = log.get('history', [])
     actives = log.get('actives', [])
+
+    # ── 機能1: 市場フェーズ取得（シナリオ確率補正用） ──
+    market_phase = None
+    try:
+        market_phase = detect_phase(stocks)
+        print(f'  [フェーズ判定] {market_phase["phase"]} (スコア: {market_phase["score"]})')
+    except Exception as e:
+        print(f'  [警告] フェーズ判定失敗: {e}')
 
     # ── 各アクティブシミュレーションの更新 ──
     completion_notes = []
@@ -1526,7 +1764,8 @@ def run_verification():
     if sims_without_scenarios:
         print(f'  [Claude] 既存銘柄{len(sims_without_scenarios)}件のシナリオ生成中...')
         for sim in sims_without_scenarios:
-            sim['scenarios'] = _generate_scenarios(sim, analysis_report[:500])
+            # 機能1: market_phaseを渡してフェーズ考慮のシナリオ確率を生成
+            sim['scenarios'] = _generate_scenarios(sim, analysis_report[:500], market_phase=market_phase)
             print(f'    -> {sim["name"]} シナリオ生成完了')
 
     # ── 空きスロットを埋める（平日のみ） ──
@@ -1544,13 +1783,28 @@ def run_verification():
         candidates = [s for s in a_rank_stocks if str(s.get('code', '')) not in used_codes]
 
         slots_to_fill = MAX_SIM_SLOTS - len(actives)
-        for best in candidates[:slots_to_fill]:
+        filled = 0
+        for best in candidates:
+            if filled >= slots_to_fill:
+                break
+            candidate_code = str(best.get('code', ''))
+            # 機能2: セクター分散チェック
+            try:
+                sector_ok, sector_reason = _check_sector_diversity(actives, candidate_code, stocks_by_code)
+                if not sector_ok:
+                    print(f'  [セクター分散] スキップ: {best.get("name","")}({candidate_code}) - {sector_reason}')
+                    continue
+                print(f'  [セクター分散] 追加可能: {best.get("name","")}({candidate_code}) - {sector_reason}')
+            except Exception as e:
+                print(f'  [警告] セクター分散チェックエラー: {e} → 追加を許可')
+
             new_sim = _make_new_sim(best)
-            # v2: 3シナリオを生成
+            # 機能1: market_phaseを渡してフェーズ考慮のシナリオ確率を生成
             print(f'  [Claude] {best.get("name","")} のシナリオ生成中...')
-            new_sim['scenarios'] = _generate_scenarios(new_sim, analysis_report[:500])
+            new_sim['scenarios'] = _generate_scenarios(new_sim, analysis_report[:500], market_phase=market_phase)
             actives.append(new_sim)
             new_sim_notes.append(f"新規: {best.get('name','')}({best.get('code','')}) EP={best.get('price',0):.0f}円")
+            filled += 1
 
     log['actives'] = actives
     log['last_updated'] = TODAY
@@ -1567,6 +1821,17 @@ def run_verification():
     direction_matches = [h for h in completed if h.get('direction_match')]
     dir_accuracy = len(direction_matches) / len(completed) * 100 if completed else 0
 
+    # ── 機能3: 土曜日 週次シナリオ精度レビュー ──
+    weekly_review_md = ''
+    if DAY_MODE == 'saturday':
+        print(f'  [土曜] 週次シナリオ精度レビュー実行...')
+        try:
+            weekly_review_md = _weekly_scenario_review(actives, history)
+            print(f'  [土曜] 週次レビュー生成完了')
+        except Exception as e:
+            print(f'  [警告] 週次レビュー生成失敗: {e}')
+            weekly_review_md = f'\n## 週次シナリオ精度レビュー（土曜）\n\n（レビュー生成失敗: {e}）\n'
+
     # ── Gemini: 精度向上のための情報収集 ──
     print(f'  [Gemini] 検証情報収集中... ({DAY_LABEL})')
     active_names = ', '.join(a['name'] for a in actives) if actives else 'なし'
@@ -1576,13 +1841,65 @@ def run_verification():
     dlog_with_match = [d for d in all_daily if d.get('prev_match') is not None]
     if dlog_with_match:
         hyp_hits = sum(1 for d in dlog_with_match if d.get('prev_match') is True)
-        hyp_accuracy = hyp_hits / len(dlog_with_match) * 100
+        hyp_total = len(dlog_with_match)  # 機能4: hyp_total を定義（バグ修正）
+        hyp_accuracy = hyp_hits / hyp_total * 100
     else:
         # 旧フォーマット後方互換
         all_hyp_old = [h for a in (actives + history) for h in a.get('hypothesis_history', [])]
         hyp_hits = sum(1 for h in all_hyp_old if h.get('match'))
-        hyp_accuracy = hyp_hits / len(all_hyp_old) * 100 if all_hyp_old else 0
-    sim_summary = f"追跡中({len(actives)}件): {active_names} / 累計{len(completed)}件完了 / 勝率{win_rate:.0f}% / 日次ログ{len(all_daily)}件 / 仮説的中率{hyp_accuracy:.0f}%({len(dlog_with_match) if dlog_with_match else 0}件)"
+        hyp_total = len(all_hyp_old)  # 機能4: hyp_total を定義（バグ修正）
+        hyp_accuracy = hyp_hits / hyp_total * 100 if hyp_total else 0
+
+    # ── 機能4: v2精度KPI計算（シナリオ的中率） ──
+    scenario_accuracy = {}
+    match_entries_count = 0  # 機能4: スコープ外参照を安全化
+    try:
+        dlog_all = [d for a in actives + history for d in a.get('daily_log', [])]
+        match_entries = [d for d in dlog_all if d.get('prev_match') is not None]
+        match_entries_count = len(match_entries)
+        hyp_accuracy_v2 = (
+            sum(1 for d in match_entries if d['prev_match']) / match_entries_count * 100
+            if match_entries else None
+        )
+        # シナリオ的中率: 各シナリオがリードしていた日の比率
+        for sid in ('bull', 'base', 'bear'):
+            lead_entries = [d for d in dlog_all if d.get('leading_scenario') == sid]
+            if lead_entries:
+                # リードシナリオ当日に、そのシナリオの方向（pct符号）と一致したか
+                sid_sign = 1 if sid == 'bull' else (-1 if sid == 'bear' else 0)
+                if sid == 'base':
+                    # base: 騰落率が-2%〜+2%の範囲（横ばい）
+                    correct = sum(1 for d in lead_entries if abs(d.get('daily_pct', 0)) <= 2.0)
+                else:
+                    correct = sum(
+                        1 for d in lead_entries
+                        if (d.get('daily_pct', 0) * sid_sign) > 0
+                    )
+                scenario_accuracy[sid] = round(correct / len(lead_entries) * 100, 1)
+            else:
+                scenario_accuracy[sid] = None
+        print(f'  [KPI v2] 仮説的中率v2={hyp_accuracy_v2:.1f}% ({len(match_entries)}件)' if hyp_accuracy_v2 is not None else '  [KPI v2] 仮説的中率v2: データなし')
+        print(f'  [KPI v2] シナリオ的中率: bull={scenario_accuracy.get("bull")}% base={scenario_accuracy.get("base")}% bear={scenario_accuracy.get("bear")}%')
+    except Exception as e:
+        print(f'  [警告] v2精度KPI計算失敗: {e}')
+        hyp_accuracy_v2 = None
+        scenario_accuracy = {'bull': None, 'base': None, 'bear': None}
+
+    # シナリオ的中率の文字列化（プロンプト用）
+    def _fmt_accuracy(val):
+        return f'{val:.1f}%' if val is not None else 'データなし'
+
+    scenario_accuracy_str = (
+        f"bull(強気)={_fmt_accuracy(scenario_accuracy.get('bull'))} / "
+        f"base(中立)={_fmt_accuracy(scenario_accuracy.get('base'))} / "
+        f"bear(弱気)={_fmt_accuracy(scenario_accuracy.get('bear'))}"
+    )
+    hyp_accuracy_v2_str = (
+        f'{hyp_accuracy_v2:.1f}% ({match_entries_count}件)'
+        if hyp_accuracy_v2 is not None else 'データなし'
+    )
+
+    sim_summary = f"追跡中({len(actives)}件): {active_names} / 累計{len(completed)}件完了 / 勝率{win_rate:.0f}% / 日次ログ{len(all_daily)}件 / 仮説的中率{hyp_accuracy:.0f}%({hyp_total}件)"
     g_prompt = f"""投資シミュレーションの精度向上に役立つ情報を収集してください。
 
 現在の状況: {sim_summary}
@@ -1636,6 +1953,8 @@ def run_verification():
 - 平均損失: {avg_loss:+.1f}%
 - 方向一致率: {dir_accuracy:.1f}%
 - 翌日仮説的中率: {hyp_accuracy:.1f}%（{hyp_hits}/{hyp_total}件）
+- 仮説的中率v2（daily_log集計）: {hyp_accuracy_v2_str}
+- シナリオ別的中率: {scenario_accuracy_str}
 
 ## 銘柄選定・仮説チームレポート（参照）
 {analysis_report[:800]}
@@ -1664,6 +1983,16 @@ def run_verification():
 | 平均利益 | {avg_win:+.1f}% | +25%以上 | {'✅' if avg_win >= 25 else '⚠️' if wins else '-'} |
 | 平均損失 | {avg_loss:+.1f}% | -8%以内 | {'✅' if avg_loss >= -8 else '⚠️' if losses else '-'} |
 | 日次ログ累計 | {len(all_daily)}件 | 積み上げ中 | - |
+| 仮説的中率（v2） | {hyp_accuracy_v2_str} | 50%以上 | {'✅' if (hyp_accuracy_v2 or 0) >= 50 else '⚠️' if hyp_accuracy_v2 is not None else '-'} |
+
+## 仮説・シナリオ精度KPI（v2）
+| 指標 | 結果 | 件数 |
+|------|------|------|
+| 仮説的中率（翌日方向） | {hyp_accuracy_v2_str} | {len(dlog_all)}件(全日次ログ) |
+| 強気(bull)シナリオ日次精度 | {_fmt_accuracy(scenario_accuracy.get('bull'))} | - |
+| 中立(base)シナリオ日次精度 | {_fmt_accuracy(scenario_accuracy.get('base'))} | - |
+| 弱気(bear)シナリオ日次精度 | {_fmt_accuracy(scenario_accuracy.get('bear'))} | - |
+（シナリオ日次精度: リードシナリオ当日の値動きがそのシナリオ方向と一致した割合）
 
 ## 3シナリオ日次追跡（本日の差異分析）
 担当: **シミュレーション追跡・検証チーム**
@@ -1691,7 +2020,13 @@ def run_verification():
 ## 参考: 精度向上のためのベストプラクティス
 （Gemini情報より）
 """
-    write_report('verification', call_claude(prompt, max_tokens=5000))
+    verification_content = call_claude(prompt, max_tokens=5000)
+
+    # 機能3: 土曜日の場合は週次シナリオ精度レビューを末尾に追記
+    if DAY_MODE == 'saturday' and weekly_review_md:
+        verification_content += '\n' + weekly_review_md
+
+    write_report('verification', verification_content)
 
 
 # ─── Team 6: セキュリティ ─────────────────────────────────────────
