@@ -240,9 +240,9 @@ def _score_num(stock: dict) -> int:
 
 
 def _rs26w(stock: dict) -> float:
-    """rs26w フィールドを float で返す（None/missing → 0.0）。
-    JSONキーは 'rs26w'（アンダースコアなし）。"""
-    v = stock.get('rs26w') or stock.get('rs_26w') or 0
+    """RS値を float で返す（None/missing → 0.0）。
+    新フィールド rs50w（週足n=50）を優先、旧フィールド rs26w/rs_26w にフォールバック。"""
+    v = stock.get('rs50w') or stock.get('rs26w') or stock.get('rs_26w') or 0
     try:
         return float(v)
     except (TypeError, ValueError):
@@ -344,7 +344,7 @@ def run_info_gathering():
         key=_rs26w, reverse=True
     )[:10]
     top_str = '\n'.join(
-        f"  {s.get('code','?')} {s.get('name','')}: RS26w={_rs26w(s):.2f}, score={s.get('score','?')}"
+        f"  {s.get('code','?')} {s.get('name','')}: RS50w={_rs26w(s):.2f}, score={s.get('score','?')}"
         for s in top
     )
 
@@ -1143,12 +1143,12 @@ def detect_phase(screen_data: list) -> dict:
     avg_rs = sum(rs_values) / len(rs_values) if rs_values else 0
     if avg_rs > 1.2:
         score += 1
-        reasons.append(f'[事実] 全銘柄平均RS26w={avg_rs:.2f} → 市場全体が強い')
+        reasons.append(f'[事実] 全銘柄平均RS50w={avg_rs:.2f} → 市場全体が強い')
     elif avg_rs > 0.8:
-        reasons.append(f'[事実] 全銘柄平均RS26w={avg_rs:.2f} → 中立水準')
+        reasons.append(f'[事実] 全銘柄平均RS50w={avg_rs:.2f} → 中立水準')
     else:
         score -= 1
-        reasons.append(f'[事実] 全銘柄平均RS26w={avg_rs:.2f} → 市場全体が弱い')
+        reasons.append(f'[事実] 全銘柄平均RS50w={avg_rs:.2f} → 市場全体が弱い')
 
     # ── 4. 判定
     if score >= 3:
@@ -1188,7 +1188,7 @@ def _make_new_sim(best: dict) -> dict:
         'result': None,
         'result_pct': None,
         'direction_match': None,
-        'reason': f"RS26w={rs26w:.2f}, score={score_n}/7, 上位候補",
+        'reason': f"RS50w={rs26w:.2f}, score={score_n}/7, 上位候補",
         # v2: 3シナリオ・日次ログ・仮説
         'scenarios': None,        # _generate_scenarios() で生成
         'daily_log': [],

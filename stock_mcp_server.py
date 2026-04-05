@@ -199,9 +199,10 @@ def _load_daily_db(code: str) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 def _fetch_daily(code_4: str) -> list:
-    """Fetch ~400 days of daily OHLCV from J-Quants V2."""
+    """Fetch ~1400 days of daily OHLCV from J-Quants V2.
+    1400日 ≈ 280週 → 週足RS n=250 (5年) の計算に必要な期間を確保"""
     code_5    = code_4 + "0"
-    date_from = (datetime.now() - timedelta(days=400)).strftime("%Y%m%d")
+    date_from = (datetime.now() - timedelta(days=1400)).strftime("%Y%m%d")
     date_to   = datetime.now().strftime("%Y%m%d")
     url = (f"https://api.jquants.com/v2/equities/bars/daily"
            f"?code={code_5}&from={date_from}&to={date_to}")
@@ -278,31 +279,30 @@ def _minervini(daily_df: pd.DataFrame) -> dict:
 # RS (Relative Strength) vs Nikkei225
 # ---------------------------------------------------------------------------
 
-def _calc_rs(stock_closes: list, bench_closes: list) -> dict:
+def _calc_rs(stock_weekly_closes: list, bench_weekly_closes: list) -> dict:
     """
-    Calculate RS ratio vs benchmark over 6w / 13w / 26w.
-    RS > 1.0 means outperforming the benchmark.
+    週足ベースのRelative Strength計算 (n=50/150/250週)。
+    計算式: (1 + stock_return) / (1 + bench_return)
+      RS > 1.0 = アウトパフォーム
+      RS < 1.0 = アンダーパフォーム
+    旧式 stock_return/bench_return は下落相場で符号が反転するバグあり → 修正済み
     """
-    def _pct(arr, n):
-        if len(arr) < n + 1:
+    def _rs(stock, bench, n):
+        if len(stock) < n + 1 or len(bench) < n + 1:
             return None
-        return arr[-1] / arr[-n-1] - 1.0
+        sr = stock[-1] / stock[-n - 1] - 1.0  # stock n週リターン
+        br = bench[-1] / bench[-n - 1] - 1.0  # bench n週リターン
+        if br == -1.0:
+            return None
+        return round((1.0 + sr) / (1.0 + br), 3)
 
-    s = stock_closes
-    b = bench_closes
-
-    rs6w  = (_pct(s, 6)  / _pct(b, 6)  if _pct(b, 6)  and _pct(b, 6)  != -1 else None)
-    rs13w = (_pct(s, 13) / _pct(b, 13) if _pct(b, 13) and _pct(b, 13) != -1 else None)
-    rs26w = (_pct(s, 26) / _pct(b, 26) if _pct(b, 26) and _pct(b, 26) != -1 else None)
-
-    # Normalize: RS > 1.0 = outperform, convert to score-style (1.0 = market)
-    def safe_round(v):
-        return round(v, 3) if v is not None else None
+    s = stock_weekly_closes
+    b = bench_weekly_closes
 
     return {
-        "rs6w":  safe_round(rs6w),
-        "rs13w": safe_round(rs13w),
-        "rs26w": safe_round(rs26w),
+        "rs50w":  _rs(s, b, 50),   # 約1年
+        "rs150w": _rs(s, b, 150),  # 約3年
+        "rs250w": _rs(s, b, 250),  # 約5年
     }
 
 # ---------------------------------------------------------------------------
@@ -490,7 +490,7 @@ def _save_results(results: dict):
         encoding="utf-8"
     )
 
-def _screen_one_with_retry(code_4: str, bench_closes: list = None) -> dict:
+def _screen_one_with_retry(code_4: str, bench_weekly_closes: list = None) -> dict:
     for attempt in range(MAX_RETRIES):
         try:
             time.sleep(REQUEST_SLEEP_SEC)
@@ -498,16 +498,17 @@ def _screen_one_with_retry(code_4: str, bench_closes: list = None) -> dict:
             if not bars or len(bars) < 10:
                 return {"code": code_4, "error": "insufficient data"}
 
-            daily_df = _daily_to_df(bars)
-            result   = _minervini(daily_df)
+            daily_df  = _daily_to_df(bars)
+            result    = _minervini(daily_df)
             if "error" in result:
                 return {"code": code_4, "error": result["error"]}
 
-            # RS calculation
+            # RS計算（週足 n=50/150/250）
             rs = {}
-            if bench_closes and len(bench_closes) > 26:
-                stock_closes = daily_df["close"].tolist()
-                rs = _calc_rs(stock_closes, bench_closes)
+            if bench_weekly_closes and len(bench_weekly_closes) > 50:
+                weekly_df          = _daily_to_weekly(bars)
+                stock_weekly_closes = weekly_df["close"].tolist()
+                rs = _calc_rs(stock_weekly_closes, bench_weekly_closes)
 
             return {
                 "code":       code_4,
@@ -521,9 +522,9 @@ def _screen_one_with_retry(code_4: str, bench_closes: list = None) -> dict:
                 "sma150":     result["sma150"],
                 "sma200":     result["sma200"],
                 "conditions": result["conditions"],
-                "rs6w":       rs.get("rs6w"),
-                "rs13w":      rs.get("rs13w"),
-                "rs26w":      rs.get("rs26w"),
+                "rs50w":      rs.get("rs50w"),
+                "rs150w":     rs.get("rs150w"),
+                "rs250w":     rs.get("rs250w"),
             }
 
         except Exception as e:
@@ -543,12 +544,12 @@ def _screen_one_with_retry(code_4: str, bench_closes: list = None) -> dict:
 def _run_screen_full_bg(codes: list, total: int, resume: bool, started_at: str):
     global _job_state
 
-    # Nikkei225ベンチマーク取得
-    bench_closes = []
+    # Nikkei225ベンチマーク取得（週足 n=250対応で1400日分）
+    bench_weekly_closes = []
     try:
-        bench_bars   = _fetch_daily(NIKKEI225_CODE)
-        bench_df     = _daily_to_df(bench_bars)
-        bench_closes = bench_df["close"].tolist()
+        bench_bars          = _fetch_daily(NIKKEI225_CODE)
+        bench_weekly_df     = _daily_to_weekly(bench_bars)
+        bench_weekly_closes = bench_weekly_df["close"].tolist()
     except Exception:
         pass
 
@@ -574,7 +575,7 @@ def _run_screen_full_bg(codes: list, total: int, resume: bool, started_at: str):
         # ThreadPoolExecutorで並列処理
         with ThreadPoolExecutor(max_workers=PARALLEL_WORKERS) as executor:
             future_to_code = {
-                executor.submit(_screen_one_with_retry, code, bench_closes): code
+                executor.submit(_screen_one_with_retry, code, bench_weekly_closes): code
                 for code in pending
             }
 
@@ -1261,7 +1262,7 @@ def screen_full_results(
     top_n      : rows to return (default 50).
     near_high  : True = only stocks within 5% of 52w high (高値更新圏).
     exclude_etf: exclude ETF/REIT (default True).
-    sort_by    : "score" | "rs26w" | "price" | "high_pct"
+    sort_by    : "score" | "rs50w" | "rs250w" | "price" | "high_pct"
     """
     results = _load_results()
     if not results:
@@ -1292,8 +1293,9 @@ def screen_full_results(
         filtered.append((score, v))
 
     # Sort
-    if sort_by == "rs26w":
-        filtered.sort(key=lambda x: -(x[1].get("rs26w") or 0))
+    if sort_by in ("rs50w", "rs250w", "rs26w"):
+        key = "rs50w" if sort_by in ("rs50w", "rs26w") else "rs250w"
+        filtered.sort(key=lambda x: -(x[1].get(key) or 0))
     elif sort_by == "price":
         filtered.sort(key=lambda x: -x[1].get("price", 0))
     elif sort_by == "high_pct":
@@ -1310,18 +1312,18 @@ def screen_full_results(
 
     header = (f"  {'Code':<6}  {'Name':<22}  {'Sc':<4}  "
               f"{'Price':>9}  {'52wH':>9}  {'高値%':>6}  "
-              f"{'RS6w':>6}  {'RS26w':>6}\n"
-              f"  {'-'*80}\n")
+              f"{'RS50w':>7}  {'RS250w':>7}\n"
+              f"  {'-'*82}\n")
     rows = []
     for _, r in filtered[:top_n]:
         price   = r.get("price", 0)
         high52  = r.get("high52", 0)
         hp      = f"{price/high52*100:.1f}%" if high52 else "  N/A"
-        rs6     = f"{r['rs6w']:.2f}"  if r.get("rs6w")  else "  N/A"
-        rs26    = f"{r['rs26w']:.2f}" if r.get("rs26w") else "  N/A"
+        rs50    = f"{r['rs50w']:.3f}"  if r.get("rs50w")  is not None else "  N/A"
+        rs250   = f"{r['rs250w']:.3f}" if r.get("rs250w") is not None else "  N/A"
         rows.append(
             f"  {r['code']:<6}  {r.get('name','')[:22]:<22}  {r['score']:<4}  "
-            f"¥{price:>8,.0f}  ¥{high52:>8,.0f}  {hp:>6}  {rs6:>6}  {rs26:>6}"
+            f"¥{price:>8,.0f}  ¥{high52:>8,.0f}  {hp:>6}  {rs50:>7}  {rs250:>7}"
         )
 
     label    = " 高値更新圏" if near_high else ""
