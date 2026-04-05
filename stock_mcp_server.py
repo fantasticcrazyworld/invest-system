@@ -548,7 +548,7 @@ def _screen_one_with_retry(code_4: str, bench_weekly_closes: list = None) -> dic
 def _run_screen_full_bg(codes: list, total: int, resume: bool, started_at: str):
     global _job_state
 
-    # Nikkei225ベンチマーク取得（週足 n=250対応で1400日分）
+    # Nikkei225ベンチマーク取得（400日→57週、n=50週に十分）
     bench_weekly_closes = []
     try:
         bench_bars          = _fetch_daily(NIKKEI225_CODE)
