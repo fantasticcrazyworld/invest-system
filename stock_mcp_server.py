@@ -37,8 +37,8 @@ mcp = FastMCP("stock-analyzer")
 # Paths & constants
 # ---------------------------------------------------------------------------
 
-# Use environment variable or default to local Windows path
-_DEFAULT_BASE = r"C:\Users\yohei\Documents\invest-system"
+# Use environment variable or default to invest-system-github (same dir as this script)
+_DEFAULT_BASE = r"C:\Users\yohei\Documents\invest-system-github"
 BASE_DIR   = Path(os.environ.get("INVEST_BASE_DIR", _DEFAULT_BASE))
 DB_PATH    = BASE_DIR / "data" / "stock_prices.db"
 CSV_DIR    = BASE_DIR / "csv_output"
@@ -890,6 +890,127 @@ def screen_full(
     return (f"スクリーニング開始: {total}銘柄{etf_note}\n"
             f"screen_full_status() で進捗確認\n"
             f"screen_full_results() で結果確認（完了後）")
+
+
+# ---------------------------------------------------------------------------
+# 一括ダウンロード (V2 API × 高並列)
+# V1 daily_quotesはBearer token認証が必要なため、V2を高並列で使用
+# ---------------------------------------------------------------------------
+
+_bulk_lock  = threading.Lock()
+_bulk_state = {"running": False, "done": 0, "total": 0, "status": "idle",
+               "saved": 0, "started_at": None, "error": ""}
+BULK_WORKERS = 5  # 並列数（レートリミット対策で5に抑制）
+
+def _download_one_stock(code_4: str) -> tuple:
+    """1銘柄の株価をV2 APIで取得してDBに保存。(code, ok) を返す
+    リトライロジック付き（429/一時エラーを自動リカバリ）"""
+    for attempt in range(MAX_RETRIES):
+        try:
+            time.sleep(REQUEST_SLEEP_SEC)
+            bars = _fetch_daily(code_4)
+            if not bars:
+                return (code_4, False)
+            daily_df  = _daily_to_df(bars)
+            weekly_df = _daily_to_weekly(bars)
+            _save_daily_db(code_4, daily_df)
+            _save_weekly(code_4, weekly_df)
+            return (code_4, True)
+        except Exception as e:
+            err = str(e)
+            if "429" in err or "rate" in err.lower():
+                time.sleep(RETRY_SLEEP_SEC * (attempt + 1))
+            elif attempt == MAX_RETRIES - 1:
+                return (code_4, False)
+            else:
+                time.sleep(RETRY_SLEEP_SEC)
+    return (code_4, False)
+
+def _run_bulk_download(workers: int, exclude_etf: bool):
+    global _bulk_state
+    # 銘柄マスター取得
+    try:
+        master = fetch_equity_master()
+    except Exception as e:
+        with _bulk_lock:
+            _bulk_state.update({"running": False, "status": "error", "error": str(e)})
+        return
+    ETF_PREFIXES = ("13", "14", "15", "16", "17", "18", "19")
+    codes = []
+    for item in master:
+        code = str(item.get("Code", ""))
+        if not code:
+            continue
+        if exclude_etf and code[:2] in ETF_PREFIXES:
+            continue
+        codes.append(code[:4])
+    codes = list(dict.fromkeys(codes))  # 重複除去
+
+    with _bulk_lock:
+        _bulk_state.update({"running": True, "done": 0, "total": len(codes),
+                            "status": "downloading", "saved": 0, "error": "",
+                            "started_at": datetime.now().isoformat()})
+
+    saved = 0
+    (BASE_DIR / "data").mkdir(parents=True, exist_ok=True)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {executor.submit(_download_one_stock, c): c for c in codes}
+        for future in as_completed(futures):
+            with _bulk_lock:
+                if not _bulk_state["running"]:
+                    executor.shutdown(wait=False)
+                    break
+            _, ok = future.result()
+            if ok:
+                saved += 1
+            with _bulk_lock:
+                _bulk_state["done"] += 1
+                _bulk_state["saved"] = saved
+    with _bulk_lock:
+        _bulk_state.update({"running": False, "status": "done", "saved": saved})
+
+
+@mcp.tool()
+def bulk_download_all(workers: int = 5, exclude_etf: bool = True) -> str:
+    """
+    全銘柄の株価データをV2 API × 並列でダウンロード。
+    workers: 並列数（デフォルト5。20だと429レートリミットで失敗するため5推奨）
+    リトライロジック付き（429エラー時は自動待機して再試行）。
+    完了後 screen_full() でMinerviniスコアを計算。
+    bulk_download_status() で進捗確認。
+    """
+    with _bulk_lock:
+        if _bulk_state["running"]:
+            return "既に実行中です。bulk_download_status() で進捗確認してください。"
+    t = threading.Thread(target=_run_bulk_download, args=(workers, exclude_etf), daemon=True)
+    t.start()
+    return (f"一括ダウンロード開始: {workers}並列 × 全銘柄\n"
+            f"推定時間: 約{round(4071/workers*REQUEST_SLEEP_SEC/60,1)}分\n"
+            f"bulk_download_status() で進捗確認")
+
+
+@mcp.tool()
+def bulk_download_status() -> str:
+    """Check progress of bulk_download_all job."""
+    with _bulk_lock:
+        s = dict(_bulk_state)
+    if s["status"] == "idle":
+        return "未実行。bulk_download_all() を呼んでください。"
+    done, total = s["done"], s["total"]
+    pct = round(done / total * 100, 1) if total else 0
+    if s["status"] == "downloading":
+        elapsed = (datetime.now() - datetime.fromisoformat(s["started_at"])).total_seconds()
+        remaining = round((elapsed / done * (total - done)) / 60, 1) if done > 0 else "?"
+        return (f"Status  : ダウンロード中\n"
+                f"Progress: {done}/{total}日 ({pct}%)\n"
+                f"残り    : 約{remaining}分")
+    if s["status"] == "saving":
+        return f"Status  : DBへ保存中 ({done}/{total}日完了)"
+    if s["status"] == "done":
+        return (f"Status  : 完了\n"
+                f"保存銘柄: {s['saved']}銘柄\n"
+                f"次のステップ: screen_full() でMinerviniスコアを計算してください")
+    return f"Status: {s['status']}"
 
 
 @mcp.tool()
