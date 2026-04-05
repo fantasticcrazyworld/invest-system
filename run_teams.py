@@ -242,7 +242,7 @@ def _score_num(stock: dict) -> int:
 def _rs26w(stock: dict) -> float:
     """RS値を float で返す（None/missing → 0.0）。
     新フィールド rs50w（週足n=50）を優先、旧フィールド rs26w/rs_26w にフォールバック。"""
-    v = stock.get('rs50w') or stock.get('rs26w') or stock.get('rs_26w') or 0
+    v = stock.get('rs50w') or stock.get('rs30w') or stock.get('rs26w') or stock.get('rs_26w') or 0
     try:
         return float(v)
     except (TypeError, ValueError):

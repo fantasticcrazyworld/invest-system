@@ -199,10 +199,10 @@ def _load_daily_db(code: str) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 def _fetch_daily(code_4: str) -> list:
-    """Fetch ~1400 days of daily OHLCV from J-Quants V2.
-    1400日 ≈ 280週 → 週足RS n=250 (5年) の計算に必要な期間を確保"""
+    """Fetch ~400 days of daily OHLCV from J-Quants V2.
+    400日 ≈ 57週 → 週足RS n=50w (250日相当) の計算に十分"""
     code_5    = code_4 + "0"
-    date_from = (datetime.now() - timedelta(days=1400)).strftime("%Y%m%d")
+    date_from = (datetime.now() - timedelta(days=400)).strftime("%Y%m%d")
     date_to   = datetime.now().strftime("%Y%m%d")
     url = (f"https://api.jquants.com/v2/equities/bars/daily"
            f"?code={code_5}&from={date_from}&to={date_to}")
@@ -281,7 +281,11 @@ def _minervini(daily_df: pd.DataFrame) -> dict:
 
 def _calc_rs(stock_weekly_closes: list, bench_weekly_closes: list) -> dict:
     """
-    週足ベースのRelative Strength計算 (n=50/150/250週)。
+    週足ベースのRelative Strength計算。
+    日足50/150/250本を週足に換算: n=10w/30w/50w
+      10週 ≈ 50日(2.5ヶ月)
+      30週 ≈ 150日(6ヶ月)
+      50週 ≈ 250日(1年)
     計算式: (1 + stock_return) / (1 + bench_return)
       RS > 1.0 = アウトパフォーム
       RS < 1.0 = アンダーパフォーム
@@ -290,8 +294,8 @@ def _calc_rs(stock_weekly_closes: list, bench_weekly_closes: list) -> dict:
     def _rs(stock, bench, n):
         if len(stock) < n + 1 or len(bench) < n + 1:
             return None
-        sr = stock[-1] / stock[-n - 1] - 1.0  # stock n週リターン
-        br = bench[-1] / bench[-n - 1] - 1.0  # bench n週リターン
+        sr = stock[-1] / stock[-n - 1] - 1.0
+        br = bench[-1] / bench[-n - 1] - 1.0
         if br == -1.0:
             return None
         return round((1.0 + sr) / (1.0 + br), 3)
@@ -300,9 +304,9 @@ def _calc_rs(stock_weekly_closes: list, bench_weekly_closes: list) -> dict:
     b = bench_weekly_closes
 
     return {
-        "rs50w":  _rs(s, b, 50),   # 約1年
-        "rs150w": _rs(s, b, 150),  # 約3年
-        "rs250w": _rs(s, b, 250),  # 約5年
+        "rs10w":  _rs(s, b, 10),  # ≈50日(2.5ヶ月)
+        "rs30w":  _rs(s, b, 30),  # ≈150日(6ヶ月)
+        "rs50w":  _rs(s, b, 50),  # ≈250日(1年)
     }
 
 # ---------------------------------------------------------------------------
@@ -503,10 +507,10 @@ def _screen_one_with_retry(code_4: str, bench_weekly_closes: list = None) -> dic
             if "error" in result:
                 return {"code": code_4, "error": result["error"]}
 
-            # RS計算（週足 n=50/150/250）
+            # RS計算（週足 n=10/30/50w ≈ 日足50/150/250日）
             rs = {}
-            if bench_weekly_closes and len(bench_weekly_closes) > 50:
-                weekly_df          = _daily_to_weekly(bars)
+            if bench_weekly_closes and len(bench_weekly_closes) > 10:
+                weekly_df           = _daily_to_weekly(bars)
                 stock_weekly_closes = weekly_df["close"].tolist()
                 rs = _calc_rs(stock_weekly_closes, bench_weekly_closes)
 
@@ -522,9 +526,9 @@ def _screen_one_with_retry(code_4: str, bench_weekly_closes: list = None) -> dic
                 "sma150":     result["sma150"],
                 "sma200":     result["sma200"],
                 "conditions": result["conditions"],
+                "rs10w":      rs.get("rs10w"),
+                "rs30w":      rs.get("rs30w"),
                 "rs50w":      rs.get("rs50w"),
-                "rs150w":     rs.get("rs150w"),
-                "rs250w":     rs.get("rs250w"),
             }
 
         except Exception as e:
@@ -1262,7 +1266,7 @@ def screen_full_results(
     top_n      : rows to return (default 50).
     near_high  : True = only stocks within 5% of 52w high (高値更新圏).
     exclude_etf: exclude ETF/REIT (default True).
-    sort_by    : "score" | "rs50w" | "rs250w" | "price" | "high_pct"
+    sort_by    : "score" | "rs10w" | "rs30w" | "rs50w" | "price" | "high_pct"
     """
     results = _load_results()
     if not results:
@@ -1293,8 +1297,9 @@ def screen_full_results(
         filtered.append((score, v))
 
     # Sort
-    if sort_by in ("rs50w", "rs250w", "rs26w"):
-        key = "rs50w" if sort_by in ("rs50w", "rs26w") else "rs250w"
+    if sort_by in ("rs10w", "rs30w", "rs50w", "rs26w"):
+        key = {"rs10w": "rs10w", "rs30w": "rs30w",
+               "rs50w": "rs50w", "rs26w": "rs50w"}.get(sort_by, "rs50w")
         filtered.sort(key=lambda x: -(x[1].get(key) or 0))
     elif sort_by == "price":
         filtered.sort(key=lambda x: -x[1].get("price", 0))
@@ -1312,18 +1317,18 @@ def screen_full_results(
 
     header = (f"  {'Code':<6}  {'Name':<22}  {'Sc':<4}  "
               f"{'Price':>9}  {'52wH':>9}  {'高値%':>6}  "
-              f"{'RS50w':>7}  {'RS250w':>7}\n"
+              f"{'RS10w':>7}  {'RS50w':>7}\n"
               f"  {'-'*82}\n")
     rows = []
     for _, r in filtered[:top_n]:
         price   = r.get("price", 0)
         high52  = r.get("high52", 0)
         hp      = f"{price/high52*100:.1f}%" if high52 else "  N/A"
+        rs10    = f"{r['rs10w']:.3f}"  if r.get("rs10w")  is not None else "  N/A"
         rs50    = f"{r['rs50w']:.3f}"  if r.get("rs50w")  is not None else "  N/A"
-        rs250   = f"{r['rs250w']:.3f}" if r.get("rs250w") is not None else "  N/A"
         rows.append(
             f"  {r['code']:<6}  {r.get('name','')[:22]:<22}  {r['score']:<4}  "
-            f"¥{price:>8,.0f}  ¥{high52:>8,.0f}  {hp:>6}  {rs50:>7}  {rs250:>7}"
+            f"¥{price:>8,.0f}  ¥{high52:>8,.0f}  {hp:>6}  {rs10:>7}  {rs50:>7}"
         )
 
     label    = " 高値更新圏" if near_high else ""
