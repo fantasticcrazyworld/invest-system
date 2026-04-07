@@ -31,6 +31,12 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from mcp.server.fastmcp import FastMCP
 
+try:
+    import yfinance as yf
+    _YF_AVAILABLE = True
+except ImportError:
+    _YF_AVAILABLE = False
+
 mcp = FastMCP("stock-analyzer")
 
 # ---------------------------------------------------------------------------
@@ -198,17 +204,62 @@ def _load_daily_db(code: str) -> pd.DataFrame:
 # Fetch helpers
 # ---------------------------------------------------------------------------
 
+def _fetch_daily_yf(code_4: str) -> list:
+    """yfinance で日本株の日足を取得（J-Quants フォールバック用）。
+    ティッカー: {4桁コード}.T  例: 6758.T (ソニー)
+    15〜20分遅延。J-Quants が失敗した場合のみ使用。
+    戻り値: J-Quants 互換の bars リスト形式に変換して返す。
+    """
+    if not _YF_AVAILABLE:
+        return []
+    try:
+        ticker = yf.Ticker(f"{code_4}.T")
+        df = ticker.history(period="400d", auto_adjust=True)
+        if df.empty:
+            return []
+        df = df.reset_index()
+        bars = []
+        for _, row in df.iterrows():
+            dt = row["Date"]
+            date_str = dt.strftime("%Y-%m-%d") if hasattr(dt, "strftime") else str(dt)[:10]
+            bars.append({
+                "Date": date_str,
+                "O": float(row["Open"]),
+                "H": float(row["High"]),
+                "L": float(row["Low"]),
+                "C": float(row["Close"]),
+                "Vo": int(row["Volume"]),
+                # J-Quants互換キー (yfinanceはauto_adjust=Trueで調整済み)
+                "AdjO": float(row["Open"]),
+                "AdjH": float(row["High"]),
+                "AdjL": float(row["Low"]),
+                "AdjC": float(row["Close"]),
+                "AdjVo": int(row["Volume"]),
+            })
+        return bars
+    except Exception:
+        return []
+
+
 def _fetch_daily(code_4: str) -> list:
     """Fetch ~400 days of daily OHLCV from J-Quants V2.
+    失敗時は yfinance にフォールバック（15分遅延）。
     400日 ≈ 57週 → 週足RS n=50w (250日相当) の計算に十分"""
     code_5    = code_4 + "0"
     date_from = (datetime.now() - timedelta(days=400)).strftime("%Y%m%d")
     date_to   = datetime.now().strftime("%Y%m%d")
     url = (f"https://api.jquants.com/v2/equities/bars/daily"
            f"?code={code_5}&from={date_from}&to={date_to}")
-    resp = requests.get(url, headers=_headers(), timeout=30)
-    resp.raise_for_status()
-    return resp.json().get("data", [])
+    try:
+        resp = requests.get(url, headers=_headers(), timeout=30)
+        resp.raise_for_status()
+        bars = resp.json().get("data", [])
+        if bars:
+            return bars
+    except Exception:
+        pass
+    # J-Quants 失敗 → yfinance フォールバック
+    return _fetch_daily_yf(code_4)
 
 def _daily_to_weekly(bars: list) -> pd.DataFrame:
     df = pd.DataFrame(bars)

@@ -1,8 +1,11 @@
-name: Daily Stock Screening
+name: Daily Stock Screening (Backup)
+# ローカルPC（Claude Code）がメイン実行。
+# このActionsはローカル実行が失敗した場合のバックアップ。
+# 手動実行（workflow_dispatch）のみ有効にし、自動スケジュールは無効化。
 
 on:
-  schedule:
-    - cron: '30 9 * * 1-5'  # 毎平日 18:30 JST
+  # schedule:
+  #   - cron: '30 9 * * 1-5'  # ローカル実行に切り替えたため無効化
   workflow_dispatch:
     inputs:
       fresh:
