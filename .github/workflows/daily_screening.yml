@@ -78,6 +78,14 @@ jobs:
           r.export_index_data()
           "
 
+      - name: Run entry filter screening
+        env:
+          INVEST_BASE_DIR: ${{ github.workspace }}
+          INVEST_GITHUB_DIR: ${{ github.workspace }}
+        run: |
+          python reports/entry_screen_v3.py
+          echo "=== エントリー候補 ===" && cat reports/entry_screen_result.txt || true
+
       - name: Commit and push results
         run: |
           git config user.name "github-actions[bot]"
@@ -85,6 +93,8 @@ jobs:
           git add -f data/screen_full_results.json || true
           git add -f data/screen_full_progress.json || true
           git add -f data/screen_full.log || true
+          git add -f reports/entry_screen_result.txt || true
+          git add -f reports/entry_screen_result.json || true
           git diff --cached --quiet || git commit -m "screening $(date +'%Y-%m-%d')"
           git pull --rebase --autostash origin main
           git push
@@ -98,6 +108,8 @@ jobs:
           for f in chart_data.json pattern_data.json fins_data.json timeline_data.json knowledge_data.json watchlist.json portfolio.json index_data.json; do
             [ -f "$f" ] && cp "$f" invest-data-repo/ || true
           done
+          # エントリーフィルタースクリーニング結果
+          [ -f "reports/entry_screen_result.json" ] && cp reports/entry_screen_result.json invest-data-repo/ || true
           cd invest-data-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

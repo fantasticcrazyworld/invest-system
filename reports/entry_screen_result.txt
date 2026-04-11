@@ -1,0 +1,82 @@
+エントリースクリーニング結果  2026-04-08
+処理: 442銘柄  skip=0
+フィルター: 7/7 + gap 0〜5% + OBV15日<1.0 + RS50w>1.3
+
+========================================================================
+① 全条件クリア: 53銘柄  (★★=std<2.0かつ前10日<5%)
+========================================================================
+Code   Name                             Price  gap%  OBV15  RS50w  ret10   std ★
+----------------------------------------------------------------------------------
+2254   Global X China Electric Vehi     1,239 +1.9%   0.24   1.33  -1.1%  1.54 ★★
+2641   Global X Japan Global Leader     4,405 +3.7%   0.30   1.39  +4.9%  1.75 ★★
+2625   iFreeETF TOPIX (Quarterly Di     3,830 +3.3%   0.54   1.39  +4.6%  1.82 ★★
+2892   NIHON SHOKUHIN KAKO CO.,LTD.     3,920 +1.6%   0.58   1.48  +2.6%  1.86 ★★
+2705   OOTOYA Holdings Co.,Ltd.         7,050 +1.3%   0.59   1.39  -0.8%  1.54 ★★
+2559   MAXIS World Equity (MSCI ACW    26,850 +1.7%   0.61   1.33  +3.1%  1.36 ★★
+3076   Ai Holdings Corporation          2,872 +2.9%   0.61   1.38  +0.9%  1.58 ★★
+2568   Listed Index Fund US Equity      6,775 +1.8%   0.63   1.39  +2.9%  1.35 ★★
+3003   Hulic Co.,Ltd.                   1,930 +0.6%   0.64   1.34  +3.6%  1.49 ★★
+2085   MAXIS High Dividend Japan Eq       760 +2.0%   0.68   1.33  +3.4%  1.71 ★★
+2513   NEXT FUNDS International Equ     3,225 +1.4%   0.72   1.32  +3.2%  1.18 ★★
+4196   NEO MARKETING Inc.               1,427 +4.2%   0.73   1.32  +0.1%  0.98 ★★
+3097   The Monogatari Corporation       4,835 +2.0%   0.74   1.43  -0.4%  1.82 ★★
+3987   Ecomott Inc.                       520 +2.6%   0.74   1.32  +3.8%  1.09 ★★
+2410   CAREER DESIGN CENTER CO.,LTD     2,489 +1.2%   0.82   1.39  +1.1%  1.14 ★★
+4577   Daito Pharmaceutical Co.,Ltd     1,444 +1.4%   0.87   1.32  -2.4%  1.96 ★★
+2914   JAPAN TOBACCO INC.               6,081 +3.4%   0.91   1.48  +2.2%  1.47 ★★
+2084   NEXT FUNDS Japan High Divide     3,485 +2.0%   0.92   1.50  +3.3%  1.56 ★★
+4528   ONO PHARMACEUTICAL CO.,LTD.      2,546 +3.0%   0.92   1.59  +3.5%  1.71 ★★
+4502   Takeda Pharmaceutical Compan     5,789 +2.6%   0.96   1.31  -0.5%  1.77 ★★
+235A   Global X Japan High Dividend     1,409 +3.4%   0.98   1.37  +4.4%  1.54 ★★
+2017   iFreeETF JPX Prime 150           1,403 +2.7%   0.99   1.36  +3.5%  1.62 ★★
+328A   Global X Japan Pricing Power     1,384 +1.6%   0.99   1.35  +2.7%  1.83 ★★
+2520   NEXT FUNDS Emerging Market E     2,117 +2.6%   0.29   1.46  +4.2%  2.18 ★ 
+3392   DELICA FOODS HOLDINGS CO.,LT       907 +0.8%   0.39   1.80  -5.6%  4.05 ★ 
+224A   Global X Uranium ETF             1,877 +0.7%   0.57   2.41  +4.9%  3.38 ★ 
+3563   FOOD & LIFE COMPANIES LTD.       9,634 +2.9%   0.58   2.16  -4.1%  2.38 ★ 
+2612   KADOYA SESAME MILLS INCORPOR     1,616 +2.0%   0.59   1.35  -4.9%  2.60 ★ 
+4112   Hodogaya Chemical Co.,Ltd.       2,354 +0.6%   0.63   1.51  +1.3%  2.85 ★ 
+2867   Global X Autonomous & EV ETF     1,619 +3.4%   0.64   1.64  +4.9%  2.06 ★ 
+3447   Shinwa Co.,Ltd.                  1,038 +1.8%   0.64   1.39  +0.5%  2.27 ★ 
+2180   SUNNY SIDE UP GROUP Inc.           949 +0.5%   0.66   1.79  +1.3%  2.50 ★ 
+253A   ETS Group Co.,Ltd.               1,266 +1.4%   0.67   1.91  +2.6%  4.15 ★ 
+3443   KAWADA TECHNOLOGIES,INC.         1,644 +0.0%   0.71   1.70  +2.6%  2.57 ★ 
+348A   MAXIS Yomiuri333 Japan Stock       280 +3.6%   0.71   1.44  +5.4%  1.72 ★ 
+3513   ICHIKAWA CO.,LTD.                3,795 +4.4%   0.74   2.00  -1.2%  3.54 ★ 
+2469   Hibino Corporation               3,790 +1.8%   0.75   1.58  -4.3%  2.85 ★ 
+2737   TOMEN DEVICES CORPORATION       12,930 +2.9%   0.76   2.31  -0.8%  3.17 ★ 
+2588   Premium Water Holdings,Inc.      3,790 +0.0%   0.79   1.33  -9.2%  2.20 ★ 
+3106   KURABO INDUSTRIES LTD.           9,480 +2.1%   0.79   1.59  +4.5%  3.33 ★ 
+3566   UNIFORM NEXT CO.,LTD.              723 +3.3%   0.86   1.44  +6.3%  1.70 ★ 
+4516   Nippon Shinyaku Co.,Ltd.         5,294 +2.7%   0.88   1.39  +1.2%  3.00 ★ 
+3399   Maruchiyo Yamaokaya Corporat     3,700 +3.6%   0.91   2.07  +1.4%  4.04 ★ 
+2644   Global X Japan Semiconductor     3,350 +4.8%   0.49   2.15  +6.2%  3.00   
+2854   Global X Japan Tech Top 20 E     2,159 +4.2%   0.52   1.48  +6.6%  2.38   
+4100   TODA KOGYO CORP.                 1,487 +4.5%   0.57   1.32  +8.4%  3.57   
+4286   CL Holdings Inc.                 1,121 +3.5%   0.63   1.38  +5.8%  3.79   
+315A   Global X Japan Bank High Div     1,600 +3.9%   0.66   1.54  +8.3%  2.96   
+2624   iFreeETF Nikkei225 (Quarterl     5,705 +3.4%   0.71   1.58  +5.7%  2.13   
+4261   AsiaQuest Co.,Ltd.               3,815 +1.6%   0.74   1.53  +5.2%  2.16   
+2080   PBR Improvement over 1x ETF      1,848 +3.6%   0.80   1.50  +5.8%  2.01   
+3105   Nisshinbo Holdings Inc.          1,653 +4.4%   0.85   1.82  +6.5%  2.46   
+3101   TOYOBO CO.,LTD.                  1,481 +0.3%   0.90   1.57  +6.2%  3.01   
+
+========================================================================
+② SMA50直下 -3〜0% 押し目候補: 14銘柄
+========================================================================
+Code   Name                             Price  gap%  OBV15  RS50w  ret10
+------------------------------------------------------------------------
+3593   HOGY MEDICAL CO.,LTD.            6,650 -0.4%   0.17   1.39  +0.0%
+4384   RAKSUL INC.                      1,886 -2.7%   0.25   1.87  -0.1%
+3236   PROPERST CO.,LTD.                  365 -2.1%   0.37   2.07  +1.4%
+4530   HISAMITSU PHARMACEUTICAL CO.     6,042 -1.7%   0.53   1.49  +0.1%
+2553   One ETF Southern China A-Sha     2,403 -1.6%   0.59   1.46  +2.5%
+3153   Yashima Denki Co.,Ltd.           3,165 -1.5%   0.66   1.93  +3.9%
+4064   Nippon Carbide Industries Co     2,792 -1.1%   0.73   1.54  +2.6%
+4098   Titan Kogyo ,Ltd.                1,112 -2.9%   0.73   1.46 -14.3%
+2112   Ensuiko Sugar Refining Co.,L       541 -2.5%   0.75   1.66  -1.8%
+300A   MIC Co.,Ltd.                     2,820 -1.9%   0.78   1.53  +0.1%
+4116   Dainichiseika Color & Chemic     1,128 -1.7%   0.78   1.50  +0.0%
+2986   LA Holdings Co.,Ltd.             9,280 -2.6%   0.83   1.35  -0.4%
+2060   FEED ONE CO.,LTD.                1,192 -1.4%   0.87   1.37  -2.0%
+4519   CHUGAI PHARMACEUTICAL CO.,LT     8,883 -2.8%   0.93   1.31  +5.0%
