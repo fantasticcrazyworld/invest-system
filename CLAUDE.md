@@ -84,6 +84,15 @@
 | `org/org_chart.md` | 組織図・責任マトリクス・KGI/KPI体系 |
 | `org/pdca_rules.md` | PDCA運用ルール・shared_context仕様 |
 
+### Doubler分析スクリプト（`scripts/`）
+過去2倍化銘柄のパターン学習→日次スクリーニングへ統合。
+
+| ファイル | 役割 |
+|---------|------|
+| `analyze_doublers.py` | 過去データから2ヶ月2倍イベント検出+パターン分類+Excel出力 |
+| `doubler_features.py` | gap_up / vol_spike / repeat_tier からdoubler_score(0-10)算出 |
+| `find_buy_candidates.py` | doubler_score+ミネルヴィニscoreでS/A/B/W tier候補抽出 |
+
 ### レポートファイル（`reports/daily/`）
 | ファイル | 担当チーム |
 |---------|---------|

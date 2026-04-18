@@ -36,3 +36,10 @@ index_backup.html
 *.bak
 logs/
 *.log
+
+# Claude Code ローカル設定・ワークツリー
+.claude/settings.local.json
+.claude/worktrees/
+
+# CSV出力（自動生成）
+csv_output/
