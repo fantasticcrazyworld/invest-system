@@ -195,8 +195,4 @@ https://invest-system-six.vercel.app/ を Ctrl+Shift+R で強制リロード
 python tests/smoke_test.py
 ```
 
-### リファクタ時の運用
-- Phase B/C/E の**前**に `python tests/smoke_test.py` 実行 → 全合格を確認
-- ファイル分割後に**再実行** → 同じ結果が出るか確認
-- 失敗したら `git reset --hard refactor-backup-20260418` で戻す
-- 計画詳細: `docs/REFACTOR_PLAN.md`
+**リファクタ時**: Phase 作業前後に `python tests/smoke_test.py` を実行し同じ結果を確認。失敗時は `git reset --hard refactor-backup-20260418`。詳細は `docs/REFACTOR_PLAN.md`。
