@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""
-Investment Team System — 9 チーム自動実行エントリポイント
-各チームが Claude / Gemini API を呼び出してレポートを生成する
-"""
-import json
-import os
-import sys
-import requests
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
+"""Investment Team System — 9 チーム自動実行エントリポイント。
 
-# teams/ モジュール化: 共通設定と runtime context を分離
-from teams._config import TEAM_KPIS, SOURCE_RELIABILITY
+実体は `teams/` パッケージに分割されており、本ファイルは dispatch のみ担う。
+使い方:
+    python run_teams.py              # 全チーム順次実行
+    python run_teams.py <team_key>   # 単一チーム実行（例: info / strategy / verification）
+
+外部スクリプト・テストからの `from run_teams import X` も後方互換として維持。
+"""
+import sys
+
+# ── runtime context（ANTHROPIC_API_KEY 必須） ──
 from teams._context import (
     JST, NOW_JST, TODAY, WEEKDAY, IS_MARKET_DAY,
     DAY_MODE, DAY_LABEL, DAY_FOCUS,
@@ -19,7 +18,8 @@ from teams._context import (
     client, MODEL, GEMINI_KEY, GEMINI_URL,
 )
 
-
+# ── 後方互換: 旧コードが `from run_teams import X` で参照する名前 ──
+from teams._config import TEAM_KPIS, SOURCE_RELIABILITY
 from teams._base import (
     call_claude, call_gemini, save_source_log,
     load_json, _fetch_fresh_price,
@@ -29,8 +29,6 @@ from teams._base import (
     read_knowledge, write_knowledge,
     LABEL_RULE, SHARED_CTX_PATH, KNOWLEDGE_DIR,
 )
-
-
 from teams._tools import (
     AGENT_TOOLS, _execute_tool, _agent_system_prompt, _run_agent_team,
 )
@@ -42,74 +40,48 @@ from teams._scenarios import (
     _get_sector_group, _check_sector_diversity, _weekly_scenario_review,
 )
 
-
-from teams.info import run_info_gathering
-from teams.analysis import run_analysis
-from teams.risk import run_risk_management
-from teams.strategy import run_strategy
-from teams.report import run_daily_report
-from teams.verification import run_verification
-from teams.security import run_security
-from teams.audit import run_internal_audit
-from teams.hr import run_hr
+# ── チーム定義（dispatch の source of truth） ──
+from teams import TEAMS, TEAM_REPORT_MAP
 
 
-TEAMS = {
-    'info':         ('情報収集チーム',   run_info_gathering),
-    'analysis':     ('銘柄選定・仮説チーム',       run_analysis),
-    'risk':         ('リスク管理チーム', run_risk_management),
-    'strategy':     ('投資戦略チーム',   run_strategy),
-    'report':       ('レポート統括',     run_daily_report),
-    'verification': ('シミュレーション追跡・検証チーム',       run_verification),
-    'security':     ('セキュリティチーム', run_security),
-    'audit':        ('内部監査チーム',   run_internal_audit),
-    'hr':           ('人事部',           run_hr),
-}
+def _dispatch_all() -> None:
+    """全チームを順次実行し、各チーム完了後に shared_context を更新する。"""
+    SHARED_CTX_PATH.write_text(
+        f'# shared_context.md（{TODAY}更新）\n'
+        '全チームの結論・重要情報を共有するハブ。各チームは必ずこの情報を参照すること。\n',
+        encoding='utf-8',
+    )
+    for key, (name, fn) in TEAMS.items():
+        print(f'\n[{name}] 開始...')
+        try:
+            fn()
+            report_name = TEAM_REPORT_MAP.get(key)
+            if report_name:
+                summary = read_report(report_name)[:400].replace('\n', ' ').strip()
+                update_shared_context(name, summary)
+            print(f'[{name}] 完了')
+        except Exception as e:
+            print(f'[{name}] エラー: {e}', file=sys.stderr)
 
-# チームキー → レポートファイル名のマッピング（shared_context更新用）
-TEAM_REPORT_MAP = {
-    'info':         'info_gathering',
-    'analysis':     'analysis',
-    'risk':         'risk',
-    'strategy':     'strategy',
-    'report':       'latest_report',
-    'verification': 'verification',
-    'security':     'security',
-    'audit':        'internal_audit',
-    'hr':           'hr_report',
-}
+
+def _dispatch_one(key: str) -> None:
+    """単一チームを実行し、shared_context を更新する。"""
+    name, fn = TEAMS[key]
+    print(f'[{name}] 開始...')
+    fn()
+    report_name = TEAM_REPORT_MAP.get(key)
+    if report_name:
+        summary = read_report(report_name)[:400].replace('\n', ' ').strip()
+        update_shared_context(name, summary)
+    print(f'[{name}] 完了')
+
 
 if __name__ == '__main__':
     target = sys.argv[1] if len(sys.argv) > 1 else 'all'
-
-    # shared_context をその日の日付でリセット（allモード時のみ）
     if target == 'all':
-        SHARED_CTX_PATH.write_text(f'# shared_context.md（{TODAY}更新）\n全チームの結論・重要情報を共有するハブ。各チームは必ずこの情報を参照すること。\n', encoding='utf-8')
-
-    if target == 'all':
-        for key, (name, fn) in TEAMS.items():
-            print(f'\n[{name}] 開始...')
-            try:
-                fn()
-                # ── shared_context 自動更新（各チームの結論を全チームに共有） ──
-                report_name = TEAM_REPORT_MAP.get(key)
-                if report_name:
-                    report_text = read_report(report_name)
-                    # 先頭300文字をサマリーとして共有
-                    summary = report_text[:400].replace('\n', ' ').strip()
-                    update_shared_context(name, summary)
-                print(f'[{name}] 完了')
-            except Exception as e:
-                print(f'[{name}] エラー: {e}', file=sys.stderr)
+        _dispatch_all()
     elif target in TEAMS:
-        name, fn = TEAMS[target]
-        print(f'[{name}] 開始...')
-        fn()
-        report_name = TEAM_REPORT_MAP.get(target)
-        if report_name:
-            summary = read_report(report_name)[:400].replace('\n', ' ').strip()
-            update_shared_context(name, summary)
-        print(f'[{name}] 完了')
+        _dispatch_one(target)
     else:
         print(f'不明なチーム: {target}')
         print(f'使用可能: {list(TEAMS.keys())} または all')

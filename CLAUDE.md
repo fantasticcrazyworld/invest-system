@@ -75,7 +75,7 @@
 | ファイル | 役割 |
 |---------|------|
 | `index.html` | サイト全体（HTML+CSS+JS一体、~4000行） |
-| `run_teams.py` | 9チーム自動実行スクリプト |
+| `run_teams.py` | 9チーム自動実行エントリポイント（~90行） |
 | `run_screen_full.py` | 自動スクリーニング |
 | `stock_mcp_server.py` | MCPサーバー（Claude Desktop用） |
 | `api/claude.js` | Claude APIプロキシ |
@@ -83,6 +83,19 @@
 | `teams/team[1-9]_*.md` | 各チームマニュアル |
 | `org/org_chart.md` | 組織図・責任マトリクス・KGI/KPI体系 |
 | `org/pdca_rules.md` | PDCA運用ルール・shared_context仕様 |
+
+### teams/ パッケージ（run_teams.py の本体）
+| ファイル | 役割 |
+|---------|------|
+| `__init__.py` | TEAMS / TEAM_REPORT_MAP 定義 |
+| `_config.py` | TEAM_KPIS, SOURCE_RELIABILITY（静的データ） |
+| `_context.py` | TODAY/DAY_MODE/client 等の runtime context |
+| `_base.py` | API 呼び出し・ファイル I/O・知識管理の共通ヘルパー |
+| `_tools.py` | AGENT_TOOLS・tool_use エージェントループ |
+| `_phase.py` | detect_phase（Attack/Steady/Defend 判定） |
+| `_scenarios.py` | Team 8 シミュレーションのシナリオ生成・乖離分析 |
+| `info.py` / `analysis.py` / `risk.py` / `strategy.py` / `report.py` | Team 1-5 |
+| `verification.py` / `security.py` / `audit.py` / `hr.py` | Team 8/6/7/9 |
 
 ### Doubler分析スクリプト（`scripts/`）
 過去2倍化銘柄のパターン学習→日次スクリーニングへ統合。
