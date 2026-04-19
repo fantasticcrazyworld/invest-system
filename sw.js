@@ -1,4 +1,4 @@
-const CACHE_NAME = 'minervini-v1';
+const CACHE_NAME = 'minervini-v2';
 const STATIC_ASSETS = ['/', '/index.html', '/lightweight-charts.js', '/manifest.json'];
 
 self.addEventListener('install', e => {
